@@ -1,0 +1,1103 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#1a3a52">
+<title>Il pifferaio magico — fiaba interattiva</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* Palette fiaba antica — pergamena + ciano profondo + oro caldo */
+  --paper:#F6EFE0;
+  --paper-2:#EFE6D2;
+  --paper-edge:#D9CDB1;
+  --ink:#1F1A14;
+  --ink-soft:#5C4A35;
+  --ink-faint:#8B7458;
+
+  --accent:#1A3A52;        /* blu pifferaio */
+  --accent-2:#2C5775;
+  --accent-soft:#E0EBF2;
+  --gold:#C99030;
+  --gold-soft:#F5E5C2;
+
+  --ok:#2E7D4F;            /* verde corretto */
+  --ok-soft:#D9EFDE;
+  --ko:#B83A3A;            /* rosso errore */
+  --ko-soft:#F4D9D9;
+
+  --shadow:0 1px 2px rgba(31,26,20,.08), 0 4px 14px rgba(31,26,20,.06);
+  --shadow-lg:0 8px 28px rgba(31,26,20,.18);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:var(--paper);color:var(--ink);font-family:'Atkinson Hyperlegible',system-ui,sans-serif;overflow-x:hidden}
+button{font-family:inherit;cursor:pointer;border:none;background:none}
+
+#app{min-height:100dvh;display:flex;flex-direction:column;background:
+  radial-gradient(1200px 600px at 50% -200px, #FBF6E8 0%, var(--paper) 60%),
+  var(--paper);
+}
+
+/* ════════════ TOOLBAR ════════════ */
+#toolbar{
+  position:sticky;top:0;z-index:40;
+  background:rgba(246,239,224,.92);
+  backdrop-filter:saturate(140%) blur(10px);
+  -webkit-backdrop-filter:saturate(140%) blur(10px);
+  border-bottom:1px solid var(--paper-edge);
+}
+.tb-row{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 16px;max-width:920px;margin:0 auto;
+}
+.tb-start,.tb-mid,.tb-end{display:flex;align-items:center;gap:10px}
+.tb-mid{flex:1;justify-content:center;min-width:0}
+.tb-end{margin-left:auto}
+
+.tb-btn{
+  width:40px;height:40px;border-radius:12px;
+  background:var(--accent);color:#fff;
+  display:flex;align-items:center;justify-content:center;
+  transition:transform .12s, background .15s, opacity .2s;
+  flex-shrink:0;
+}
+.tb-btn:active{transform:scale(.94)}
+.tb-btn:hover{background:var(--accent-2)}
+.tb-btn:disabled{opacity:.4;cursor:not-allowed}
+.tb-btn svg{width:20px;height:20px}
+.tb-btn.ghost{background:transparent;color:var(--accent);border:1.5px solid var(--paper-edge)}
+.tb-btn.ghost:hover{background:var(--accent-soft)}
+
+/* progress + stats blocco */
+.tb-prog{
+  display:flex;align-items:center;gap:10px;
+  background:#fff;border:1px solid var(--paper-edge);
+  border-radius:100px;padding:6px 14px 6px 8px;
+  min-width:200px;max-width:340px;flex:1;
+  box-shadow:var(--shadow);
+}
+.tb-prog-bar{
+  flex:1;height:8px;background:var(--paper-2);border-radius:100px;overflow:hidden;
+  position:relative;
+}
+.tb-prog-fill{
+  height:100%;width:0%;
+  background:linear-gradient(90deg,var(--gold) 0%, #E5B454 100%);
+  border-radius:100px;transition:width .35s ease;
+}
+.tb-prog-pct{
+  font-size:.78rem;font-weight:700;color:var(--accent);
+  font-variant-numeric:tabular-nums;min-width:32px;text-align:right;
+}
+.tb-stats{
+  display:flex;align-items:center;gap:4px;
+  background:var(--ok-soft);color:var(--ok);
+  border-radius:100px;padding:4px 12px;
+  font-weight:700;font-size:.85rem;
+  font-variant-numeric:tabular-nums;
+}
+.tb-stats svg{width:14px;height:14px}
+.tb-stats.empty{background:var(--paper-2);color:var(--ink-faint)}
+
+.tb-name{
+  font-family:'Lora',serif;font-style:italic;
+  color:var(--ink-soft);font-size:.92rem;
+  max-width:130px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+
+/* ════════════ STORY ════════════ */
+#story{
+  flex:1;
+  padding:32px 16px 120px;
+  position:relative;
+}
+.story-content{
+  max-width:760px;margin:0 auto;
+  background:linear-gradient(180deg,#FCF7E8 0%, #F8F0D8 100%);
+  border:1px solid var(--paper-edge);
+  border-radius:18px;
+  padding:48px 44px;
+  box-shadow:var(--shadow);
+  position:relative;
+}
+.story-content::before{
+  content:"";position:absolute;inset:6px;
+  border:1px solid rgba(217,205,177,.45);
+  border-radius:14px;pointer-events:none;
+}
+
+.story-header{text-align:center;margin-bottom:36px}
+.story-header h1{
+  font-family:'Lora',serif;
+  font-size:clamp(1.8rem,4vw,2.4rem);
+  font-weight:600;color:var(--accent);
+  letter-spacing:.01em;line-height:1.15;
+}
+.story-subtitle{
+  font-family:'Lora',serif;font-style:italic;
+  color:var(--ink-faint);
+  font-size:1rem;margin-top:6px;
+}
+.story-rule{
+  width:80px;height:2px;
+  background:var(--gold);
+  margin:18px auto 0;
+}
+.story-rule::before,.story-rule::after{
+  content:"";display:inline-block;width:6px;height:6px;
+  background:var(--gold);border-radius:50%;
+  position:relative;top:-2px;
+}
+.story-rule::before{margin-right:8px;float:left}
+.story-rule::after{margin-left:8px;float:right}
+
+/* ════════════ TESTO + WORD-LEVEL HIGHLIGHT ════════════ */
+.story-text{
+  font-family:'Lora',serif;
+  font-size:clamp(1.12rem,1.4vw,1.28rem);
+  line-height:1.95;
+  color:var(--ink);
+  text-align:justify;
+  hyphens:auto;
+}
+.w{
+  display:inline;
+  transition:color .15s, background .25s;
+  border-radius:3px;
+  padding:0 1px;
+}
+.w.read{color:var(--ink-faint)}
+.w.now{
+  color:var(--accent);
+  background:var(--gold-soft);
+  font-weight:600;
+}
+
+/* ════════════ CLOZE ════════════ */
+.cz{
+  display:inline-flex;align-items:center;gap:4px;
+  vertical-align:middle;
+  margin:0 2px;
+  font-family:'Atkinson Hyperlegible',sans-serif;
+}
+.cz-input{
+  font-family:inherit;font-size:.95em;font-weight:700;
+  width:6.5em;height:2em;
+  padding:0 8px;
+  border:2px dashed var(--ink-faint);
+  border-radius:8px;
+  background:#fff;color:var(--ink);
+  text-align:center;outline:none;
+  transition:all .2s;
+  text-transform:lowercase;
+}
+.cz-input::placeholder{color:var(--ink-faint);font-weight:400;font-style:italic;font-size:.85em}
+.cz-input:focus{
+  border-style:solid;border-color:var(--accent);
+  box-shadow:0 0 0 4px var(--accent-soft);
+}
+.cz-input.pending{
+  border-style:solid;border-color:var(--gold);
+  background:#FFFCF2;
+  animation:bounce 1.6s ease-in-out infinite;
+}
+.cz-input.solved{
+  border-style:solid;border-color:var(--ok);
+  background:var(--ok-soft);color:var(--ok);
+  cursor:default;
+  width:auto;min-width:5em;
+  padding:0 12px;
+  animation:none;
+}
+.cz-input.shown{
+  border-style:dotted;border-color:var(--gold);
+  background:var(--gold-soft);color:var(--ink-soft);
+  cursor:default;
+  width:auto;min-width:5em;
+  padding:0 12px;
+  font-style:italic;
+  animation:none;
+}
+.cz-input.wrong{
+  border-color:var(--ko);
+  background:var(--ko-soft);color:var(--ko);
+  animation:shake .42s;
+}
+@keyframes bounce{
+  0%,100%{transform:translateY(0)}
+  50%{transform:translateY(-3px)}
+}
+@keyframes shake{
+  0%,100%{transform:translateX(0)}
+  20%{transform:translateX(-6px)}
+  40%{transform:translateX(6px)}
+  60%{transform:translateX(-4px)}
+  80%{transform:translateX(4px)}
+}
+.cz-btn{
+  width:1.85em;height:1.85em;
+  border-radius:50%;
+  background:var(--accent-soft);color:var(--accent);
+  display:inline-flex;align-items:center;justify-content:center;
+  transition:transform .15s, background .15s, opacity .2s;
+  font-size:.85em;
+  flex-shrink:0;
+}
+.cz-btn:hover{background:#CFE0EC;transform:scale(1.05)}
+.cz-btn:active{transform:scale(.92)}
+.cz-btn svg{width:.95em;height:.95em}
+.cz-btn.cz-replay.playing{
+  background:var(--gold);color:#fff;
+  animation:pulse 1s ease-in-out infinite;
+}
+@keyframes pulse{
+  0%,100%{box-shadow:0 0 0 0 rgba(201,144,48,.5)}
+  50%{box-shadow:0 0 0 6px rgba(201,144,48,0)}
+}
+.cz-btn.cz-hint{background:var(--gold-soft);color:var(--gold)}
+.cz-btn.cz-hint:hover{background:#EBD089}
+.cz.solved .cz-btn{display:none}
+.cz.shown .cz-btn{display:none}
+
+/* ════════════ YT HOST (nascosto) ════════════ */
+#yt-host{
+  position:fixed;left:-2000px;top:-2000px;
+  width:1px;height:1px;overflow:hidden;
+  opacity:0;pointer-events:none;
+}
+
+/* ════════════ FEEDBACK BANNER ════════════ */
+#feedback{
+  position:fixed;left:50%;top:78px;
+  transform:translateX(-50%) translateY(-120%);
+  display:flex;align-items:center;gap:10px;
+  padding:14px 24px;border-radius:100px;
+  font-weight:700;font-size:1rem;
+  box-shadow:var(--shadow-lg);
+  transition:transform .35s cubic-bezier(.34,1.56,.64,1);
+  z-index:50;pointer-events:none;
+}
+#feedback.show{transform:translateX(-50%) translateY(0)}
+#feedback.ok{background:var(--ok);color:#fff}
+#feedback.ko{background:var(--ko);color:#fff}
+#feedback svg{width:22px;height:22px}
+
+/* ════════════ DONE SCREEN ════════════ */
+#done-screen{
+  position:fixed;inset:0;z-index:80;
+  background:rgba(31,26,20,.55);
+  backdrop-filter:blur(6px);
+  display:none;align-items:center;justify-content:center;
+  padding:20px;
+}
+#done-screen.show{display:flex;animation:fadein .4s}
+@keyframes fadein{from{opacity:0}to{opacity:1}}
+.done-card{
+  background:linear-gradient(180deg,#FCF7E8 0%, #F8F0D8 100%);
+  border:1px solid var(--paper-edge);
+  border-radius:24px;
+  padding:36px 32px;
+  max-width:460px;width:100%;
+  text-align:center;
+  box-shadow:var(--shadow-lg);
+  animation:popin .5s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes popin{
+  from{transform:scale(.85);opacity:0}
+  to{transform:scale(1);opacity:1}
+}
+.done-icon{
+  width:84px;height:84px;margin:0 auto 14px;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--gold);border-radius:50%;
+  box-shadow:0 8px 20px rgba(201,144,48,.35);
+}
+.done-icon svg{width:50px;height:50px;color:#fff}
+.done-title{
+  font-family:'Lora',serif;font-size:1.85rem;font-weight:600;
+  color:var(--accent);margin-bottom:8px;
+}
+.done-msg{
+  color:var(--ink-soft);font-size:1rem;line-height:1.4;
+  margin-bottom:24px;
+}
+.done-stats{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:8px;
+  margin-bottom:24px;
+}
+.done-stat{
+  background:#fff;border:1px solid var(--paper-edge);
+  border-radius:12px;padding:14px 8px;
+}
+.done-stat-num{
+  font-family:'Lora',serif;font-size:1.85rem;font-weight:700;
+  color:var(--accent);line-height:1;
+}
+.done-stat-lbl{
+  font-size:.72rem;color:var(--ink-faint);
+  text-transform:uppercase;letter-spacing:.06em;
+  margin-top:6px;font-weight:700;
+}
+.done-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.done-btn{
+  padding:12px 24px;border-radius:100px;font-weight:700;font-size:.95rem;
+  transition:transform .12s, background .15s;
+}
+.done-btn:active{transform:scale(.96)}
+.done-btn.primary{background:var(--accent);color:#fff}
+.done-btn.primary:hover{background:var(--accent-2)}
+.done-btn.secondary{background:var(--paper-2);color:var(--ink)}
+.done-btn.secondary:hover{background:var(--paper-edge)}
+
+/* ════════════ MENU MODAL ════════════ */
+#menu-modal{
+  position:fixed;inset:0;z-index:90;
+  background:rgba(31,26,20,.55);
+  backdrop-filter:blur(6px);
+  display:none;align-items:flex-end;justify-content:center;
+  padding:0;
+}
+#menu-modal.show{display:flex;animation:fadein .25s}
+.menu-card{
+  background:var(--paper);
+  border-top:1px solid var(--paper-edge);
+  border-radius:24px 24px 0 0;
+  padding:24px 20px 32px;
+  max-width:520px;width:100%;
+  animation:slideup .35s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes slideup{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.menu-grip{
+  width:48px;height:5px;background:var(--paper-edge);
+  border-radius:100px;margin:0 auto 14px;
+}
+.menu-title{
+  font-family:'Lora',serif;font-size:1.5rem;font-weight:600;
+  color:var(--accent);text-align:center;
+}
+.menu-sub{
+  font-family:'Lora',serif;font-style:italic;
+  color:var(--ink-faint);text-align:center;
+  margin-bottom:20px;
+}
+.menu-item{
+  width:100%;display:flex;align-items:center;gap:14px;
+  padding:14px 16px;background:#fff;border:1px solid var(--paper-edge);
+  border-radius:14px;margin-bottom:8px;
+  text-align:left;font-size:.98rem;color:var(--ink);font-weight:500;
+  transition:transform .12s, background .15s;
+}
+.menu-item:active{transform:scale(.98)}
+.menu-item:hover{background:var(--paper-2)}
+.menu-item svg{width:22px;height:22px;color:var(--accent);flex-shrink:0}
+.menu-item.danger svg{color:var(--ko)}
+.menu-item.danger{color:var(--ko)}
+
+/* level pills */
+.level-row{
+  display:flex;gap:8px;margin-bottom:14px;
+  background:var(--paper-2);
+  padding:6px;border-radius:14px;
+}
+.level-pill{
+  flex:1;padding:10px 6px;
+  border-radius:10px;
+  text-align:center;
+  font-size:.85rem;font-weight:700;color:var(--ink-soft);
+  background:transparent;
+  transition:background .15s, color .15s, transform .12s;
+}
+.level-pill:active{transform:scale(.96)}
+.level-pill.active{background:#fff;color:var(--accent);box-shadow:var(--shadow)}
+.level-stars{display:block;color:var(--gold);font-size:.8rem;margin-top:2px;letter-spacing:1px}
+
+/* ════════════ NICK MODAL (welcome) ════════════ */
+#nick-modal{
+  position:fixed;inset:0;z-index:100;
+  background:linear-gradient(135deg,#1A3A52 0%, #0E2030 100%);
+  display:flex;align-items:center;justify-content:center;
+  padding:24px;
+}
+#nick-modal.hidden{display:none}
+.nick-card{
+  background:linear-gradient(180deg,#FCF7E8 0%, #F8F0D8 100%);
+  border-radius:22px;
+  padding:36px 30px;
+  max-width:440px;width:100%;
+  text-align:center;
+  box-shadow:var(--shadow-lg);
+}
+.nick-card h2{
+  font-family:'Lora',serif;font-weight:600;
+  color:var(--accent);font-size:1.6rem;
+  line-height:1.25;margin-bottom:8px;
+}
+.nick-card .sub{
+  font-family:'Lora',serif;font-style:italic;
+  color:var(--ink-faint);margin-bottom:22px;font-size:1rem;
+}
+.nick-input{
+  width:100%;padding:14px 18px;font-size:1.05rem;
+  border:2px solid var(--paper-edge);border-radius:12px;
+  background:#fff;color:var(--ink);outline:none;
+  text-align:center;font-family:'Lora',serif;
+  transition:border-color .2s, box-shadow .2s;
+  margin-bottom:20px;
+}
+.nick-input:focus{
+  border-color:var(--accent);
+  box-shadow:0 0 0 4px var(--accent-soft);
+}
+.nick-card .nick-go{
+  background:var(--accent);color:#fff;
+  padding:14px 36px;border-radius:100px;
+  font-weight:700;font-size:1rem;
+  transition:transform .12s, background .15s;
+}
+.nick-card .nick-go:hover{background:var(--accent-2)}
+.nick-card .nick-go:active{transform:scale(.96)}
+
+/* loading */
+#loading{
+  position:fixed;inset:0;z-index:120;
+  background:var(--paper);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:18px;
+  transition:opacity .4s;
+}
+#loading.hidden{opacity:0;pointer-events:none}
+.loader{
+  width:48px;height:48px;border-radius:50%;
+  border:4px solid var(--paper-2);
+  border-top-color:var(--accent);
+  animation:spin 1s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+#loading .lbl{
+  font-family:'Lora',serif;font-style:italic;
+  color:var(--ink-faint);
+}
+
+/* responsive */
+@media (max-width:640px){
+  .story-content{padding:32px 22px}
+  .tb-name{display:none}
+  .tb-prog{min-width:140px}
+  #story{padding:20px 12px 100px}
+}
+@media (max-width:420px){
+  .tb-row{padding:8px 10px;gap:6px}
+  .tb-btn{width:38px;height:38px}
+}
+
+/* print friendly fallback */
+@media print{#toolbar,#yt-host,#feedback,#done-screen,#menu-modal{display:none}}
+</style>
+</head>
+<body>
+
+<div id="app">
+
+  <!-- TOOLBAR -->
+  <div id="toolbar">
+    <div class="tb-row">
+      <div class="tb-start">
+        <button class="tb-btn" id="btn-play" title="Play / Pausa">
+          <svg id="ic-play" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+        </button>
+        <button class="tb-btn ghost" id="btn-restart" title="Ricomincia">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="tb-mid">
+        <div class="tb-prog">
+          <div class="tb-prog-bar"><div class="tb-prog-fill" id="progress-fill"></div></div>
+          <span class="tb-prog-pct" id="progress-text">0%</span>
+          <span class="tb-stats empty" id="stats-pill">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            <span id="stat-ok">0</span><span>/</span><span id="stat-total">0</span>
+          </span>
+        </div>
+      </div>
+
+      <div class="tb-end">
+        <span class="tb-name" id="tb-name">—</span>
+        <button class="tb-btn ghost" id="btn-menu" title="Menù">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="6" r="1.4" fill="currentColor"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/><circle cx="12" cy="18" r="1.4" fill="currentColor"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- STORY -->
+  <main id="story">
+    <div class="story-content">
+      <div class="story-header">
+        <h1>Il pifferaio magico di Hamelin</h1>
+        <div class="story-subtitle">una fiaba antica con lieto fine</div>
+        <div class="story-rule"></div>
+      </div>
+      <div class="story-text" id="story-text"><!-- popolato da JS --></div>
+    </div>
+  </main>
+
+  <!-- HOST IFRAME YT -->
+  <div id="yt-host"><div id="yt-player"></div></div>
+</div>
+
+<!-- FEEDBACK -->
+<div id="feedback">
+  <span id="feedback-icon"></span>
+  <span id="feedback-text"></span>
+</div>
+
+<!-- DONE SCREEN -->
+<div id="done-screen">
+  <div class="done-card">
+    <div class="done-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2l2.39 7.36H22l-6.18 4.49 2.36 7.27L12 16.63l-6.18 4.49 2.36-7.27L2 9.36h7.61z"/>
+      </svg>
+    </div>
+    <div class="done-title">Bravissimo!</div>
+    <div class="done-msg" id="done-msg">Hai finito la fiaba del pifferaio magico.</div>
+    <div class="done-stats">
+      <div class="done-stat"><div class="done-stat-num" id="done-ok">0</div><div class="done-stat-lbl">indovinate</div></div>
+      <div class="done-stat"><div class="done-stat-num" id="done-replays">0</div><div class="done-stat-lbl">riascolti</div></div>
+      <div class="done-stat"><div class="done-stat-num" id="done-shown">0</div><div class="done-stat-lbl">aiuti</div></div>
+    </div>
+    <div class="done-actions">
+      <button class="done-btn secondary" id="done-back">Cambia livello</button>
+      <button class="done-btn primary" id="done-restart">Riascolta</button>
+    </div>
+  </div>
+</div>
+
+<!-- MENU -->
+<div id="menu-modal">
+  <div class="menu-card">
+    <div class="menu-grip"></div>
+    <div class="menu-title" id="menu-greeting">Ciao!</div>
+    <div class="menu-sub">cosa vuoi fare?</div>
+
+    <div class="level-row" id="level-row">
+      <button class="level-pill" data-lv="facile">Facile<span class="level-stars">★</span></button>
+      <button class="level-pill active" data-lv="medio">Medio<span class="level-stars">★★</span></button>
+      <button class="level-pill" data-lv="difficile">Difficile<span class="level-stars">★★★</span></button>
+    </div>
+
+    <button class="menu-item" id="mi-restart">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
+      Ricomincia la fiaba
+    </button>
+    <button class="menu-item" id="mi-close">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>
+      Chiudi il menù
+    </button>
+  </div>
+</div>
+
+<!-- NICK -->
+<div id="nick-modal">
+  <div class="nick-card">
+    <h2>Benvenuto<br>nella fiaba del<br>pifferaio magico</h2>
+    <div class="sub">prima di cominciare,<br>come ti chiami?</div>
+    <input type="text" class="nick-input" id="nick-input" maxlength="18" placeholder="Il tuo nome" autocomplete="off">
+    <button class="nick-go" id="nick-go">Comincia</button>
+  </div>
+</div>
+
+<!-- LOADING -->
+<div id="loading">
+  <div class="loader"></div>
+  <div class="lbl">sto preparando la fiaba…</div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════
+   DATI STORIA — iniettati da Python
+   ═══════════════════════════════════════════════════════ */
+const STORY = {"videoId":"zoAeBSjYUbM","title":"Il pifferaio magico di Hamelin","subtitle":"una fiaba antica con lieto fine","audioStart":0.02,"audioEnd":572.24,"tokens":[{"t":"C'era","w":1,"b":"c'era","s":0.02,"e":0.506},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"una","w":1,"b":"una","s":0.506,"e":0.797},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"volta","w":1,"b":"volta","s":0.797,"e":1.283},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"una","w":1,"b":"una","s":1.283,"e":1.574},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"piccola","w":1,"b":"piccola","s":1.574,"e":2.254},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"città","w":1,"b":"città","s":2.254,"e":2.74},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"di","w":1,"b":"di","s":2.74,"e":2.934},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"nome","w":1,"b":"nome","s":2.934,"e":3.323},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"Hamelin","w":1,"b":"hamelin","s":3.323,"e":4.003},{"t":".","w":0,"b":"","s":0,"e":0},{"t":"I","w":1,"b":"i","s":4.56,"e":4.65},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"suoi","w":1,"b":"suoi","s":4.65,"e":5.008},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"abitanti","w":1,"b":"abitanti","s":5.008,"e":5.724},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"erano","w":1,"b":"erano","s":5.724,"e":6.171},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"sempre","w":1,"b":"sempre","s":6.171,"e":6.709},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"vissuti","w":1,"b":"vissuti","s":6.709,"e":7.335},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"felici","w":1,"b":"felici","s":7.335,"e":7.872},{"t":",","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"ma","w":1,"b":"ma","s":7.962,"e":8.141},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"da","w":1,"b":"da","s":8.141,"e":8.32},{"t":"qualche","w":1,"b":"qualche","s":8.32,"e":8.886},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"tempo","w":1,"b":"tempo","s":8.886,"e":9.291},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"regnava","w":1,"b":"regnava","s":9.291,"e":9.857},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"una","w":1,"b":"una","s":9.857,"e":10.1},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"gran","w":1,"b":"gran","s":10.1,"e":10.423},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"confusione","w":1,"b":"confusione","s":10.423,"e":11.232},{"t":".","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"Hamelin","w":1,"b":"hamelin","s":11.313,"e":11.879},{"t":",","w":0,"b":"","s":0,"e":0},{"t":"infatti","w":1,"b":"infatti","s":11.96,"e":12.819},{"t":",","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"era","w":1,"b":"era","s":12.941,"e":13.309},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"stata","w":1,"b":"stata","s":13.309,"e":13.923},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"invasa","w":1,"b":"invasa","s":13.923,"e":14.659},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"dai","w":1,"b":"dai","s":14.659,"e":15.027},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"topi","w":1,"b":"topi","s":15.027,"e":15.517},{"t":".","w":0,"b":"","s":0,"e":0},{"t":"Non","w":1,"b":"non","s":15.75,"e":16.006},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"c'era","w":1,"b":"c'era","s":16.006,"e":16.434},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"solo","w":1,"b":"solo","s":16.434,"e":16.776},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"qualche","w":1,"b":"qualche","s":16.776,"e":17.374},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"topolino","w":1,"b":"topolino","s":17.374,"e":18.058},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"nelle","w":1,"b":"nelle","s":18.058,"e":18.486},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"cantine","w":1,"b":"cantine","s":18.486,"e":19.084},{"t":",","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"ma","w":1,"b":"ma","s":19.17,"e":19.341},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"centinaia","w":1,"b":"centinaia","s":19.341,"e":20.11},{"t":"di","w":1,"b":"di","s":20.11,"e":20.295},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"musini","w":1,"b":"musini","s":20.295,"e":20.851},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"sbucavano","w":1,"b":"sbucavano","s":20.851,"e":21.684},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"da","w":1,"b":"da","s":21.684,"e":21.87},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"ogni","w":1,"b":"ogni","s":21.87,"e":22.24},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"angolo","w":1,"b":"angolo","s":22.24,"e":22.796},{"t":",","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"si","w":1,"b":"si","s":22.888,"e":23.073},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"intruffolavano","w":1,"b":"intruffolavano","s":23.073,"e":24.37},{"t":"nelle","w":1,"b":"nelle","s":24.37,"e":24.829},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"cucine","w":1,"b":"cucine","s":24.829,"e":25.379},{"t":",","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"saltavano","w":1,"b":"saltavano","s":25.47,"e":26.296},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"dalle","w":1,"b":"dalle","s":26.296,"e":26.754},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"finestre","w":1,"b":"finestre","s":26.754,"e":27.488},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"aperte","w":1,"b":"aperte","s":27.488,"e":28.038},{"t":",","w":0,"b":"","s":0,"e":0},{"t":"correvano","w":1,"b":"correvano","s":28.13,"e":28.903},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"lungo","w":1,"b":"lungo","s":28.903,"e":29.333},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"i","w":1,"b":"i","s":29.333,"e":29.419},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"tetti","w":1,"b":"tetti","s":29.419,"e":29.848},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"delle","w":1,"b":"delle","s":29.848,"e":30.278},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"case","w":1,"b":"case","s":30.278,"e":30.621},{"t":",","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"sui","w":1,"b":"sui","s":30.707,"e":30.965},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"cornicioni","w":1,"b":"cornicioni","s":30.965,"e":31.824},{"t":",","w":0,"b":"","s":0,"e":0},{"t":"si","w":1,"b":"si","s":31.91,"e":32.134},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"inseguivano","w":1,"b":"inseguivano","s":32.134,"e":33.367},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"per","w":1,"b":"per","s":33.367,"e":33.703},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"le","w":1,"b":"le","s":33.703,"e":33.927},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"scale","w":1,"b":"scale","s":33.927,"e":34.487},{"t":".","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"i","w":1,"b":"i","s":34.599,"e":34.711},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"cittadini","w":1,"b":"cittadini","s":34.711,"e":35.72},{"t":"erano","w":1,"b":"erano","s":35.72,"e":36.204},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"disperati","w":1,"b":"disperati","s":36.204,"e":37.075},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"e","w":1,"b":"e","s":37.075,"e":37.171},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"decisero","w":1,"b":"decisero","s":37.171,"e":37.945},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"di","w":1,"b":"di","s":37.945,"e":38.139},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"rivolgersi","w":1,"b":"rivolgersi","s":38.139,"e":39.106},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"al","w":1,"b":"al","s":39.106,"e":39.3},{"t":"sindaco","w":1,"b":"sindaco","s":39.3,"e":39.842},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"della","w":1,"b":"della","s":39.842,"e":40.229},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"città","w":1,"b":"città","s":40.229,"e":40.617},{"t":".","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"radunandosi","w":1,"b":"radunandosi","s":40.694,"e":41.546},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"nella","w":1,"b":"nella","s":41.546,"e":41.933},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"piazza","w":1,"b":"piazza","s":41.933,"e":42.398},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"davanti","w":1,"b":"davanti","s":42.398,"e":42.94},{"t":"alla","w":1,"b":"alla","s":42.94,"e":43.303},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"sua","w":1,"b":"sua","s":43.303,"e":43.575},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"finestra","w":1,"b":"finestra","s":43.575,"e":44.3},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"per","w":1,"b":"per","s":44.3,"e":44.573},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"protestare","w":1,"b":"protestare","s":44.573,"e":45.48},{"t":".","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"«","w":0,"b":"","s":0,"e":0},{"t":"La","w":1,"b":"la","s":45.661,"e":45.842},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"città","w":1,"b":"città","s":45.842,"e":46.296},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"è","w":1,"b":"è","s":46.296,"e":46.387},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"piena","w":1,"b":"piena","s":46.387,"e":46.84},{"t":"di","w":1,"b":"di","s":46.84,"e":47.025},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"topi","w":1,"b":"topi","s":47.025,"e":47.394},{"t":"!","w":0,"b":"","s":0,"e":0},{"t":"»","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"gridavano","w":1,"b":"gridavano","s":47.578,"e":48.409},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"infuriati","w":1,"b":"infuriati","s":48.409,"e":49.24},{"t":".","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"«","w":0,"b":"","s":0,"e":0},{"t":"Ormai","w":1,"b":"ormai","s":49.425,"e":49.886},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"ci","w":1,"b":"ci","s":49.886,"e":50.071},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"sono","w":1,"b":"sono","s":50.071,"e":50.44},{"t":"più","w":1,"b":"più","s":50.44,"e":50.702},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"topi","w":1,"b":"topi","s":50.702,"e":51.052},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"che","w":1,"b":"che","s":51.052,"e":51.314},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"bambini","w":1,"b":"bambini","s":51.314,"e":51.927},{"t":".","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"Bisogna","w":1,"b":"bisogna","s":52.014,"e":52.626},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"trovare","w":1,"b":"trovare","s":52.626,"e":53.238},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"al","w":1,"b":"al","s":53.238,"e":53.413},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"più","w":1,"b":"più","s":53.413,"e":53.675},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"presto","w":1,"b":"presto","s":53.675,"e":54.2},{"t":"una","w":1,"b":"una","s":54.2,"e":54.525},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"soluzione","w":1,"b":"soluzione","s":54.525,"e":55.502},{"t":"»","w":0,"b":"","s":0,"e":0},{"t":".","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"il","w":1,"b":"il","s":55.719,"e":55.936},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"sindaco","w":1,"b":"sindaco","s":55.936,"e":56.695},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"si","w":1,"b":"si","s":56.695,"e":56.912},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"affacciò","w":1,"b":"affacciò","s":56.912,"e":57.78},{"t":"alla","w":1,"b":"alla","s":57.78,"e":58.125},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"finestra","w":1,"b":"finestra","s":58.125,"e":58.816},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"cercando","w":1,"b":"cercando","s":58.816,"e":59.507},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"di","w":1,"b":"di","s":59.507,"e":59.68},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"sorridere","w":1,"b":"sorridere","s":59.68,"e":60.457},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"ma","w":1,"b":"ma","s":60.457,"e":60.629},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"in","w":1,"b":"in","s":60.629,"e":60.802},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"realtà","w":1,"b":"realtà","s":60.802,"e":61.32},{"t":"non","w":1,"b":"non","s":61.32,"e":61.571},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"sapeva","w":1,"b":"sapeva","s":61.571,"e":62.074},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"proprio","w":1,"b":"proprio","s":62.074,"e":62.661},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"che","w":1,"b":"che","s":62.661,"e":62.913},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"cosa","w":1,"b":"cosa","s":62.913,"e":63.248},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"fare","w":1,"b":"fare","s":63.248,"e":63.583},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"e","w":1,"b":"e","s":63.583,"e":63.667},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"cominciava","w":1,"b":"cominciava","s":63.667,"e":64.506},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"a","w":1,"b":"a","s":64.506,"e":64.589},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"agitarsi","w":1,"b":"agitarsi","s":64.589,"e":65.26},{"t":"mentre","w":1,"b":"mentre","s":66.06,"e":66.503},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"stava","w":1,"b":"stava","s":66.503,"e":66.873},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"cercando","w":1,"b":"cercando","s":66.873,"e":67.464},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"un'idea","w":1,"b":"un'idea","s":67.464,"e":67.981},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"sentì","w":1,"b":"sentì","s":67.981,"e":68.35},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"tre","w":1,"b":"tre","s":68.35,"e":68.572},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"leggeri","w":1,"b":"leggeri","s":68.572,"e":69.089},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"colpetti","w":1,"b":"colpetti","s":69.089,"e":69.68},{"t":"alla","w":1,"b":"alla","s":69.68,"e":69.988},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"porta","w":1,"b":"porta","s":69.988,"e":70.373},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"aveva","w":1,"b":"aveva","s":70.373,"e":70.759},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"una","w":1,"b":"una","s":70.759,"e":70.99},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"gran","w":1,"b":"gran","s":70.99,"e":71.298},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"paura","w":1,"b":"paura","s":71.298,"e":71.683},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"che","w":1,"b":"che","s":71.683,"e":71.914},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"fosse","w":1,"b":"fosse","s":71.914,"e":72.299},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"un","w":1,"b":"un","s":72.299,"e":72.453},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"cittadino","w":1,"b":"cittadino","s":72.453,"e":73.147},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"infuriato","w":1,"b":"infuriato","s":73.147,"e":73.84},{"t":"chiese","w":1,"b":"chiese","s":76.54,"e":76.993},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"una","w":1,"b":"una","s":76.993,"e":77.219},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"strana","w":1,"b":"strana","s":77.219,"e":77.672},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"vocetta","w":1,"b":"vocetta","s":77.672,"e":78.2},{"t":"rispose","w":1,"b":"rispose","s":80.43,"e":81.145},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"il","w":1,"b":"il","s":81.145,"e":81.349},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"sindaco","w":1,"b":"sindaco","s":81.349,"e":82.065},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"un","w":1,"b":"un","s":82.065,"e":82.269},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"po'","w":1,"b":"po","s":82.269,"e":82.575},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"preoccupato","w":1,"b":"preoccupato","s":82.575,"e":83.699},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"Entrò","w":1,"b":"entrò","s":83.699,"e":84.21},{"t":"un","w":1,"b":"un","s":84.21,"e":84.369},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"buffo","w":1,"b":"buffo","s":84.369,"e":84.767},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"personaggio","w":1,"b":"personaggio","s":84.767,"e":85.643},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"con","w":1,"b":"con","s":85.643,"e":85.882},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"un","w":1,"b":"un","s":85.882,"e":86.041},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"vestito","w":1,"b":"vestito","s":86.041,"e":86.598},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"azzurro","w":1,"b":"azzurro","s":86.598,"e":87.155},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"a","w":1,"b":"a","s":87.155,"e":87.235},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"righe","w":1,"b":"righe","s":87.235,"e":87.633},{"t":",","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"scarpe","w":1,"b":"scarpe","s":87.712,"e":88.19},{"t":"con","w":1,"b":"con","s":88.19,"e":88.477},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"una","w":1,"b":"una","s":88.477,"e":88.765},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"lunga","w":1,"b":"lunga","s":88.765,"e":89.244},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"punta","w":1,"b":"punta","s":89.244,"e":89.723},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"e","w":1,"b":"e","s":89.723,"e":89.818},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"un","w":1,"b":"un","s":89.818,"e":90.01},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"cappello","w":1,"b":"cappello","s":90.01,"e":90.776},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"con","w":1,"b":"con","s":90.776,"e":91.064},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"la","w":1,"b":"la","s":91.064,"e":91.255},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"piuma","w":1,"b":"piuma","s":91.255,"e":91.734},{"t":".","w":0,"b":"","s":0,"e":0},{"t":"Sono","w":1,"b":"sono","s":92.01,"e":92.357},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"venuto","w":1,"b":"venuto","s":92.357,"e":92.878},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"a","w":1,"b":"a","s":92.878,"e":92.965},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"liberare","w":1,"b":"liberare","s":92.965,"e":93.66},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"la","w":1,"b":"la","s":93.66,"e":93.833},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"città","w":1,"b":"città","s":93.833,"e":94.267},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"dai","w":1,"b":"dai","s":94.267,"e":94.528},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"topi","w":1,"b":"topi","s":94.528,"e":94.875},{"t":".","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"Io","w":1,"b":"io","s":94.962,"e":95.135},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"possiedo","w":1,"b":"possiedo","s":95.135,"e":95.83},{"t":"un","w":1,"b":"un","s":95.83,"e":95.992},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"potere","w":1,"b":"potere","s":95.992,"e":96.477},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"magico","w":1,"b":"magico","s":96.477,"e":96.962},{"t":".","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"Con","w":1,"b":"con","s":97.043,"e":97.286},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"la","w":1,"b":"la","s":97.286,"e":97.448},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"mia","w":1,"b":"mia","s":97.448,"e":97.69},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"musica","w":1,"b":"musica","s":97.69,"e":98.176},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"posso","w":1,"b":"posso","s":98.176,"e":98.58},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"condurre","w":1,"b":"condurre","s":98.58,"e":99.227},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"con","w":1,"b":"con","s":99.227,"e":99.47},{"t":"me","w":1,"b":"me","s":99.47,"e":99.7},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"oggetti","w":1,"b":"oggetti","s":99.7,"e":100.504},{"t":",","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"animali","w":1,"b":"animali","s":100.619,"e":101.423},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"e","w":1,"b":"e","s":101.423,"e":101.537},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"uomini","w":1,"b":"uomini","s":101.537,"e":102.227},{"t":".","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"Incominciò","w":1,"b":"incominciò","s":102.341,"e":103.49},{"t":"l'uomo","w":1,"b":"l'uomo","s":103.49,"e":104.077},{"t":".","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"«","w":0,"b":"","s":0,"e":0},{"t":"Allora","w":1,"b":"allora","s":104.272,"e":104.859},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"tu","w":1,"b":"tu","s":104.859,"e":105.055},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"sei","w":1,"b":"sei","s":105.055,"e":105.348},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"la","w":1,"b":"la","s":105.348,"e":105.544},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"mia","w":1,"b":"mia","s":105.544,"e":105.837},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"salvezza","w":1,"b":"salvezza","s":105.837,"e":106.62},{"t":"!","w":0,"b":"","s":0,"e":0},{"t":"»","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"esclamò","w":1,"b":"esclamò","s":106.815,"e":107.5},{"t":"il","w":1,"b":"il","s":107.5,"e":107.682},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"sindaco","w":1,"b":"sindaco","s":107.682,"e":108.317},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"contento","w":1,"b":"contento","s":108.317,"e":109.044},{"t":".","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"«","w":0,"b":"","s":0,"e":0},{"t":"Arrivi","w":1,"b":"arrivi","s":109.226,"e":109.771},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"proprio","w":1,"b":"proprio","s":109.771,"e":110.407},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"al","w":1,"b":"al","s":110.407,"e":110.588},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"momento","w":1,"b":"momento","s":110.588,"e":111.224},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"giusto","w":1,"b":"giusto","s":111.224,"e":111.769},{"t":".","w":0,"b":"","s":0,"e":0},{"t":"Se","w":1,"b":"se","s":111.86,"e":112.003},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"riuscirai","w":1,"b":"riuscirai","s":112.003,"e":112.647},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"davvero","w":1,"b":"davvero","s":112.647,"e":113.147},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"a","w":1,"b":"a","s":113.147,"e":113.219},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"far","w":1,"b":"far","s":113.219,"e":113.434},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"sparire","w":1,"b":"sparire","s":113.434,"e":113.934},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"tutti","w":1,"b":"tutti","s":113.934,"e":114.292},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"questi","w":1,"b":"questi","s":114.292,"e":114.721},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"topi","w":1,"b":"topi","s":114.721,"e":115.007},{"t":",","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"ti","w":1,"b":"ti","s":115.079,"e":115.222},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"ricompenserò","w":1,"b":"ricompenserò","s":115.222,"e":116.08},{"t":"generosamente","w":1,"b":"generosamente","s":116.08,"e":117.448},{"t":",","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"lo","w":1,"b":"lo","s":117.553,"e":117.764},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"prometto","w":1,"b":"prometto","s":117.764,"e":118.606},{"t":"!","w":0,"b":"","s":0,"e":0},{"t":"»","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"Non","w":1,"b":"non","s":118.816,"e":119.132},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"preoccuparti","w":1,"b":"preoccuparti","s":119.132,"e":120.395},{"t":",","w":0,"b":"","s":0,"e":0},{"t":"tornerò","w":1,"b":"tornerò","s":120.5,"e":121.294},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"presto","w":1,"b":"presto","s":121.294,"e":121.975},{"t":",","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"rispose","w":1,"b":"rispose","s":122.089,"e":122.883},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"sicuro","w":1,"b":"sicuro","s":122.883,"e":123.564},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"di","w":1,"b":"di","s":123.564,"e":123.791},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"sé","w":1,"b":"sé","s":123.791,"e":124.018},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"il","w":1,"b":"il","s":124.018,"e":124.245},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"pifferaio","w":1,"b":"pifferaio","s":124.245,"e":125.267},{"t":".","w":0,"b":"","s":0,"e":0},{"t":"Vedrai","w":1,"b":"vedrai","s":125.38,"e":125.943},{"t":",","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"fra","w":1,"b":"fra","s":126.037,"e":126.318},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"meno","w":1,"b":"meno","s":126.318,"e":126.693},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"di","w":1,"b":"di","s":126.693,"e":126.881},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"un'ora","w":1,"b":"un'ora","s":126.881,"e":127.443},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"in","w":1,"b":"in","s":127.443,"e":127.631},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"tutta","w":1,"b":"tutta","s":127.631,"e":128.1},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"Hamelin","w":1,"b":"hamelin","s":128.1,"e":128.757},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"non","w":1,"b":"non","s":128.757,"e":129.038},{"t":"incontrerai","w":1,"b":"incontrerai","s":129.038,"e":130.142},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"più","w":1,"b":"più","s":130.142,"e":130.443},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"neanche","w":1,"b":"neanche","s":130.443,"e":131.145},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"un","w":1,"b":"un","s":131.145,"e":131.346},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"topo","w":1,"b":"topo","s":131.346,"e":131.747},{"t":".","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"Così","w":1,"b":"così","s":131.847,"e":132.249},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"uscì","w":1,"b":"uscì","s":132.249,"e":132.65},{"t":"dal","w":1,"b":"dal","s":132.65,"e":132.886},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"municipio","w":1,"b":"municipio","s":132.886,"e":133.594},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"e","w":1,"b":"e","s":133.594,"e":133.673},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"si","w":1,"b":"si","s":133.673,"e":133.83},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"incamminò","w":1,"b":"incamminò","s":133.83,"e":134.538},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"verso","w":1,"b":"verso","s":134.538,"e":134.931},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"la","w":1,"b":"la","s":134.931,"e":135.089},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"piazza","w":1,"b":"piazza","s":135.089,"e":135.561},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"del","w":1,"b":"del","s":135.561,"e":135.797},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"paese","w":1,"b":"paese","s":135.797,"e":136.19},{"t":"impugnando","w":1,"b":"impugnando","s":136.19,"e":137.34},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"il","w":1,"b":"il","s":137.34,"e":137.57},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"suo","w":1,"b":"suo","s":137.57,"e":137.915},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"piffero","w":1,"b":"piffero","s":137.915,"e":138.72},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"magico","w":1,"b":"magico","s":138.72,"e":139.41},{"t":".","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"Poi","w":1,"b":"poi","s":139.525,"e":139.87},{"t":"si","w":1,"b":"si","s":139.87,"e":140.051},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"fermò","w":1,"b":"fermò","s":140.051,"e":140.503},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"a","w":1,"b":"a","s":140.503,"e":140.594},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"pensare","w":1,"b":"pensare","s":140.594,"e":141.227},{"t":",","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"come","w":1,"b":"come","s":141.318,"e":141.68},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"per","w":1,"b":"per","s":141.68,"e":141.951},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"ricordare","w":1,"b":"ricordare","s":141.951,"e":142.765},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"una","w":1,"b":"una","s":142.765,"e":143.037},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"melodia","w":1,"b":"melodia","s":143.037,"e":143.67},{"t":"particolare","w":1,"b":"particolare","s":143.67,"e":144.787},{"t":",","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"e","w":1,"b":"e","s":144.888,"e":144.99},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"sotto","w":1,"b":"sotto","s":144.99,"e":145.498},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"gli","w":1,"b":"gli","s":145.498,"e":145.802},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"occhi","w":1,"b":"occhi","s":145.802,"e":146.31},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"incuriositi","w":1,"b":"incuriositi","s":146.31,"e":147.427},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"di","w":1,"b":"di","s":147.427,"e":147.63},{"t":"grandi","w":1,"b":"grandi","s":147.63,"e":148.1},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"e","w":1,"b":"e","s":148.1,"e":148.178},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"bambini","w":1,"b":"bambini","s":148.178,"e":148.726},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"iniziò","w":1,"b":"iniziò","s":148.726,"e":149.195},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"a","w":1,"b":"a","s":149.195,"e":149.273},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"suonare","w":1,"b":"suonare","s":149.273,"e":149.821},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"una","w":1,"b":"una","s":149.821,"e":150.056},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"canzoncina","w":1,"b":"canzoncina","s":150.056,"e":150.839},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"molto","w":1,"b":"molto","s":150.839,"e":151.23},{"t":"allegra","w":1,"b":"allegra","s":151.23,"e":151.846},{"t":",","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"seduto","w":1,"b":"seduto","s":151.934,"e":152.461},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"vicino","w":1,"b":"vicino","s":152.461,"e":152.989},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"a","w":1,"b":"a","s":152.989,"e":153.077},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"una","w":1,"b":"una","s":153.077,"e":153.341},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"fontana","w":1,"b":"fontana","s":153.341,"e":153.957},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"di","w":1,"b":"di","s":153.957,"e":154.133},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"pietra","w":1,"b":"pietra","s":154.133,"e":154.661},{"t":".","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"immediatamente","w":1,"b":"immediatamente","s":154.749,"e":155.98},{"t":"come","w":1,"b":"come","s":155.98,"e":156.386},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"per","w":1,"b":"per","s":156.386,"e":156.691},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"magia","w":1,"b":"magia","s":156.691,"e":157.199},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"un","w":1,"b":"un","s":157.199,"e":157.403},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"fiume","w":1,"b":"fiume","s":157.403,"e":157.911},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"di","w":1,"b":"di","s":157.911,"e":158.114},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"topolini","w":1,"b":"topolini","s":158.114,"e":158.927},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"attratti","w":1,"b":"attratti","s":158.927,"e":159.74},{"t":"da","w":1,"b":"da","s":159.74,"e":159.947},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"quelle","w":1,"b":"quelle","s":159.947,"e":160.568},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"note","w":1,"b":"note","s":160.568,"e":160.982},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"bizzarre","w":1,"b":"bizzarre","s":160.982,"e":161.811},{"t":",","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"uscì","w":1,"b":"uscì","s":161.914,"e":162.328},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"dalle","w":1,"b":"dalle","s":162.328,"e":162.846},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"case","w":1,"b":"case","s":162.846,"e":163.26},{"t":"e","w":1,"b":"e","s":163.26,"e":163.354},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"invase","w":1,"b":"invase","s":163.354,"e":163.918},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"la","w":1,"b":"la","s":163.918,"e":164.106},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"piazza","w":1,"b":"piazza","s":164.106,"e":164.67},{"t":".","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"Saltellavano","w":1,"b":"saltellavano","s":164.764,"e":165.892},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"tutti","w":1,"b":"tutti","s":165.892,"e":166.362},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"intorno","w":1,"b":"intorno","s":166.362,"e":167.02},{"t":"al","w":1,"b":"al","s":167.02,"e":167.217},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"pifferaio","w":1,"b":"pifferaio","s":167.217,"e":168.103},{"t":".","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"senza","w":1,"b":"senza","s":168.201,"e":168.693},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"smettere","w":1,"b":"smettere","s":168.693,"e":169.481},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"un","w":1,"b":"un","s":169.481,"e":169.677},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"solo","w":1,"b":"solo","s":169.677,"e":170.071},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"istante","w":1,"b":"istante","s":170.071,"e":170.76},{"t":"di","w":1,"b":"di","s":170.76,"e":170.94},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"suonare","w":1,"b":"suonare","s":170.94,"e":171.57},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"iniziò","w":1,"b":"iniziò","s":171.57,"e":172.11},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"a","w":1,"b":"a","s":172.11,"e":172.2},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"camminare","w":1,"b":"camminare","s":172.2,"e":173.01},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"svelto","w":1,"b":"svelto","s":173.01,"e":173.55},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"attraversando","w":1,"b":"attraversando","s":173.55,"e":174.72},{"t":"la","w":1,"b":"la","s":174.72,"e":174.878},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"città","w":1,"b":"città","s":174.878,"e":175.274},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"a","w":1,"b":"a","s":175.274,"e":175.353},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"grandi","w":1,"b":"grandi","s":175.353,"e":175.828},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"passi","w":1,"b":"passi","s":175.828,"e":176.223},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"verso","w":1,"b":"verso","s":176.223,"e":176.619},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"il","w":1,"b":"il","s":176.619,"e":176.777},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"fiume","w":1,"b":"fiume","s":176.777,"e":177.173},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"che","w":1,"b":"che","s":177.173,"e":177.41},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"scorreva","w":1,"b":"scorreva","s":177.41,"e":178.043},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"poco","w":1,"b":"poco","s":178.043,"e":178.36},{"t":"lontano","w":1,"b":"lontano","s":178.36,"e":178.966},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"gli","w":1,"b":"gli","s":178.966,"e":179.225},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"abitanti","w":1,"b":"abitanti","s":179.225,"e":179.917},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"di","w":1,"b":"di","s":179.917,"e":180.09},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"hamelin","w":1,"b":"hamelin","s":180.09,"e":180.696},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"si","w":1,"b":"si","s":180.696,"e":180.869},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"chiedevano","w":1,"b":"chiedevano","s":180.869,"e":181.734},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"stupiti","w":1,"b":"stupiti","s":181.734,"e":182.34},{"t":"chi","w":1,"b":"chi","s":182.44,"e":182.66},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"fosse","w":1,"b":"fosse","s":182.66,"e":183.028},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"quell'omino","w":1,"b":"quell'omino","s":183.028,"e":183.836},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"che","w":1,"b":"che","s":183.836,"e":184.056},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"incantava","w":1,"b":"incantava","s":184.056,"e":184.717},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"con","w":1,"b":"con","s":184.717,"e":184.938},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"la","w":1,"b":"la","s":184.938,"e":185.085},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"sua","w":1,"b":"sua","s":185.085,"e":185.305},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"musica","w":1,"b":"musica","s":185.305,"e":185.746},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"persino","w":1,"b":"persino","s":185.746,"e":186.26},{"t":"gli","w":1,"b":"gli","s":186.26,"e":186.567},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"animali","w":1,"b":"animali","s":186.567,"e":187.283},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"tutti","w":1,"b":"tutti","s":187.283,"e":187.794},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"correvano","w":1,"b":"correvano","s":187.794,"e":188.715},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"nelle","w":1,"b":"nelle","s":188.715,"e":189.226},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"strade","w":1,"b":"strade","s":189.226,"e":189.84},{"t":"seguendo","w":1,"b":"seguendo","s":189.84,"e":190.42},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"quello","w":1,"b":"quello","s":190.42,"e":190.854},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"strano","w":1,"b":"strano","s":190.854,"e":191.289},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"corteo","w":1,"b":"corteo","s":191.289,"e":191.724},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"e","w":1,"b":"e","s":191.724,"e":191.796},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"si","w":1,"b":"si","s":191.796,"e":191.941},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"arrampicavano","w":1,"b":"arrampicavano","s":191.941,"e":192.883},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"sugli","w":1,"b":"sugli","s":192.883,"e":193.245},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"alberi","w":1,"b":"alberi","s":193.245,"e":193.68},{"t":"per","w":1,"b":"per","s":193.68,"e":194.017},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"vedere","w":1,"b":"vedere","s":194.017,"e":194.691},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"meglio","w":1,"b":"meglio","s":194.691,"e":195.365},{"t":".","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"Intanto","w":1,"b":"intanto","s":195.478,"e":196.264},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"il","w":1,"b":"il","s":196.264,"e":196.489},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"pifferaio","w":1,"b":"pifferaio","s":196.489,"e":197.5},{"t":"continuava","w":1,"b":"continuava","s":197.5,"e":198.322},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"nel","w":1,"b":"nel","s":198.322,"e":198.569},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"cammino","w":1,"b":"cammino","s":198.569,"e":199.144},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"seguito","w":1,"b":"seguito","s":199.144,"e":199.72},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"da","w":1,"b":"da","s":199.72,"e":199.884},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"centinaia","w":1,"b":"centinaia","s":199.884,"e":200.624},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"di","w":1,"b":"di","s":200.624,"e":200.789},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"topi","w":1,"b":"topi","s":200.789,"e":201.118},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"e","w":1,"b":"e","s":201.118,"e":201.2},{"t":"si","w":1,"b":"si","s":201.2,"e":201.394},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"dirigeva","w":1,"b":"dirigeva","s":201.394,"e":202.169},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"alle","w":1,"b":"alle","s":202.169,"e":202.556},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"porte","w":1,"b":"porte","s":202.556,"e":203.041},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"di","w":1,"b":"di","s":203.041,"e":203.235},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"Hamelin","w":1,"b":"hamelin","s":203.235,"e":203.913},{"t":".","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"Arrivato","w":1,"b":"arrivato","s":204.01,"e":204.785},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"al","w":1,"b":"al","s":204.785,"e":204.979},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"fiume","w":1,"b":"fiume","s":204.979,"e":205.463},{"t":",","w":0,"b":"","s":0,"e":0},{"t":"si","w":1,"b":"si","s":205.56,"e":205.718},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"fermò","w":1,"b":"fermò","s":205.718,"e":206.115},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"di","w":1,"b":"di","s":206.115,"e":206.273},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"colpo","w":1,"b":"colpo","s":206.273,"e":206.669},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"sulla","w":1,"b":"sulla","s":206.669,"e":207.066},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"riva","w":1,"b":"riva","s":207.066,"e":207.383},{"t":",","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"lasciando","w":1,"b":"lasciando","s":207.462,"e":208.175},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"che","w":1,"b":"che","s":208.175,"e":208.413},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"i","w":1,"b":"i","s":208.413,"e":208.492},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"topi","w":1,"b":"topi","s":208.492,"e":208.809},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"si","w":1,"b":"si","s":208.809,"e":208.968},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"tuffassero","w":1,"b":"tuffassero","s":208.968,"e":209.76},{"t":"nell'acqua","w":1,"b":"nell'acqua","s":209.76,"e":210.845},{"t":".","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"In","w":1,"b":"in","s":210.953,"e":211.17},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"pochi","w":1,"b":"pochi","s":211.17,"e":211.713},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"minuti","w":1,"b":"minuti","s":211.713,"e":212.364},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"sparirono","w":1,"b":"sparirono","s":212.364,"e":213.34},{"t":"tutti","w":1,"b":"tutti","s":213.34,"e":213.872},{"t":".","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"come","w":1,"b":"come","s":213.978,"e":214.404},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"aveva","w":1,"b":"aveva","s":214.404,"e":214.935},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"promesso","w":1,"b":"promesso","s":214.935,"e":215.786},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"non","w":1,"b":"non","s":215.786,"e":216.105},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"si","w":1,"b":"si","s":216.105,"e":216.318},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"trovò","w":1,"b":"trovò","s":216.318,"e":216.85},{"t":"più","w":1,"b":"più","s":216.85,"e":217.133},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"un","w":1,"b":"un","s":217.133,"e":217.321},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"solo","w":1,"b":"solo","s":217.321,"e":217.698},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"topo","w":1,"b":"topo","s":217.698,"e":218.075},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"in","w":1,"b":"in","s":218.075,"e":218.263},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"tutta","w":1,"b":"tutta","s":218.263,"e":218.734},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"la","w":1,"b":"la","s":218.734,"e":218.923},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"città","w":1,"b":"città","s":218.923,"e":219.394},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"anche","w":1,"b":"anche","s":219.394,"e":219.865},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"i","w":1,"b":"i","s":219.865,"e":219.959},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"gatti","w":1,"b":"gatti","s":219.959,"e":220.43},{"t":"che","w":1,"b":"che","s":220.43,"e":220.655},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"se","w":1,"b":"se","s":220.655,"e":220.804},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"ne","w":1,"b":"ne","s":220.804,"e":220.954},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"stavano","w":1,"b":"stavano","s":220.954,"e":221.479},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"nascosti","w":1,"b":"nascosti","s":221.479,"e":222.078},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"da","w":1,"b":"da","s":222.078,"e":222.227},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"tempo","w":1,"b":"tempo","s":222.227,"e":222.602},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"non","w":1,"b":"non","s":222.602,"e":222.827},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"credevano","w":1,"b":"credevano","s":222.827,"e":223.501},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"ai","w":1,"b":"ai","s":223.501,"e":223.65},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"loro","w":1,"b":"loro","s":223.65,"e":223.95},{"t":"occhi","w":1,"b":"occhi","s":223.95,"e":224.431},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"e","w":1,"b":"e","s":224.431,"e":224.528},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"cominciarono","w":1,"b":"cominciarono","s":224.528,"e":225.683},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"a","w":1,"b":"a","s":225.683,"e":225.779},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"festeggiare","w":1,"b":"festeggiare","s":225.779,"e":226.838},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"nelle","w":1,"b":"nelle","s":226.838,"e":227.32},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"strade","w":1,"b":"strade","s":227.32,"e":227.897},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"il","w":1,"b":"il","s":227.897,"e":228.09},{"t":"sindaco","w":1,"b":"sindaco","s":228.09,"e":228.674},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"invece","w":1,"b":"invece","s":228.674,"e":229.174},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"prendendosi","w":1,"b":"prendendosi","s":229.174,"e":230.092},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"il","w":1,"b":"il","s":230.092,"e":230.259},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"merito","w":1,"b":"merito","s":230.259,"e":230.759},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"di","w":1,"b":"di","s":230.759,"e":230.926},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"tutto","w":1,"b":"tutto","s":230.926,"e":231.343},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"si","w":1,"b":"si","s":231.343,"e":231.51},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"ritirò","w":1,"b":"ritirò","s":231.51,"e":232.01},{"t":"soddisfatto","w":1,"b":"soddisfatto","s":232.01,"e":232.826},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"nel","w":1,"b":"nel","s":232.826,"e":233.048},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"municipio","w":1,"b":"municipio","s":233.048,"e":233.716},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"all'improvviso","w":1,"b":"all'improvviso","s":233.716,"e":234.754},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"come","w":1,"b":"come","s":234.754,"e":235.051},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"la","w":1,"b":"la","s":235.051,"e":235.199},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"prima","w":1,"b":"prima","s":235.199,"e":235.57},{"t":"volta","w":1,"b":"volta","s":235.57,"e":236.101},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"si","w":1,"b":"si","s":236.101,"e":236.313},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"udirono","w":1,"b":"udirono","s":236.313,"e":237.057},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"alla","w":1,"b":"alla","s":237.057,"e":237.481},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"porta","w":1,"b":"porta","s":237.481,"e":238.012},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"tre","w":1,"b":"tre","s":238.012,"e":238.331},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"leggeri","w":1,"b":"leggeri","s":238.331,"e":239.074},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"colpetti","w":1,"b":"colpetti","s":239.074,"e":239.924},{"t":".","w":0,"b":"","s":0,"e":0},{"t":"Era","w":1,"b":"era","s":240.03,"e":240.351},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"il","w":1,"b":"il","s":240.351,"e":240.565},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"pifferaio","w":1,"b":"pifferaio","s":240.565,"e":241.529},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"magico","w":1,"b":"magico","s":241.529,"e":242.171},{"t":".","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"«","w":0,"b":"","s":0,"e":0},{"t":"Buongiorno","w":1,"b":"buongiorno","s":242.385,"e":243.456},{"t":"»","w":0,"b":"","s":0,"e":0},{"t":",","w":0,"b":"","s":0,"e":0},{"t":"disse","w":1,"b":"disse","s":243.67,"e":244.133},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"tranquillo","w":1,"b":"tranquillo","s":244.133,"e":245.059},{"t":".","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"«","w":0,"b":"","s":0,"e":0},{"t":"Il","w":1,"b":"il","s":245.245,"e":245.43},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"mio","w":1,"b":"mio","s":245.43,"e":245.708},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"compito","w":1,"b":"compito","s":245.708,"e":246.356},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"è","w":1,"b":"è","s":246.356,"e":246.449},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"finito","w":1,"b":"finito","s":246.449,"e":247.005},{"t":"»","w":0,"b":"","s":0,"e":0},{"t":".","w":0,"b":"","s":0,"e":0},{"t":"Appena","w":1,"b":"appena","s":247.19,"e":247.697},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"il","w":1,"b":"il","s":247.697,"e":247.866},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"sindaco","w":1,"b":"sindaco","s":247.866,"e":248.457},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"lo","w":1,"b":"lo","s":248.457,"e":248.626},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"vide","w":1,"b":"vide","s":248.626,"e":248.964},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"entrare","w":1,"b":"entrare","s":248.964,"e":249.556},{"t":",","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"si","w":1,"b":"si","s":249.64,"e":249.809},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"finse","w":1,"b":"finse","s":249.809,"e":250.232},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"molto","w":1,"b":"molto","s":250.232,"e":250.654},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"sorpreso","w":1,"b":"sorpreso","s":250.654,"e":251.33},{"t":"e","w":1,"b":"e","s":251.33,"e":251.433},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"rispose","w":1,"b":"rispose","s":251.433,"e":252.157},{"t":".","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"«","w":0,"b":"","s":0,"e":0},{"t":"Posso","w":1,"b":"posso","s":252.363,"e":252.88},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"fare","w":1,"b":"fare","s":252.88,"e":253.293},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"qualcosa","w":1,"b":"qualcosa","s":253.293,"e":254.12},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"per","w":1,"b":"per","s":254.12,"e":254.43},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"te","w":1,"b":"te","s":254.43,"e":254.637},{"t":"?","w":0,"b":"","s":0,"e":0},{"t":"»","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"«","w":0,"b":"","s":0,"e":0},{"t":"Sono","w":1,"b":"sono","s":254.947,"e":255.36},{"t":"tornato","w":1,"b":"tornato","s":255.36,"e":255.961},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"per","w":1,"b":"per","s":255.961,"e":256.218},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"ritirare","w":1,"b":"ritirare","s":256.218,"e":256.904},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"il","w":1,"b":"il","s":256.904,"e":257.076},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"compenso","w":1,"b":"compenso","s":257.076,"e":257.762},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"che","w":1,"b":"che","s":257.762,"e":258.02},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"mi","w":1,"b":"mi","s":258.02,"e":258.191},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"ha","w":1,"b":"ha","s":258.191,"e":258.363},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"promesso","w":1,"b":"promesso","s":258.363,"e":259.049},{"t":"»","w":0,"b":"","s":0,"e":0},{"t":".","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"«","w":0,"b":"","s":0,"e":0},{"t":"Compenso","w":1,"b":"compenso","s":259.307,"e":259.993},{"t":"?","w":0,"b":"","s":0,"e":0},{"t":"Ma","w":1,"b":"ma","s":260.68,"e":260.862},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"di","w":1,"b":"di","s":260.862,"e":261.044},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"che","w":1,"b":"che","s":261.044,"e":261.317},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"cosa","w":1,"b":"cosa","s":261.317,"e":261.68},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"stai","w":1,"b":"stai","s":261.68,"e":262.044},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"parlando","w":1,"b":"parlando","s":262.044,"e":262.772},{"t":"?","w":0,"b":"","s":0,"e":0},{"t":"»","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"esclamò","w":1,"b":"esclamò","s":262.954,"e":263.59},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"il","w":1,"b":"il","s":263.59,"e":263.772},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"sindaco","w":1,"b":"sindaco","s":263.772,"e":264.409},{"t":".","w":0,"b":"","s":0,"e":0},{"t":"«","w":0,"b":"","s":0,"e":0},{"t":"Io","w":1,"b":"io","s":264.837,"e":264.991},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"non","w":1,"b":"non","s":264.991,"e":265.222},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"ti","w":1,"b":"ti","s":265.222,"e":265.377},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"ho","w":1,"b":"ho","s":265.377,"e":265.531},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"promesso","w":1,"b":"promesso","s":265.531,"e":266.147},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"proprio","w":1,"b":"proprio","s":266.147,"e":266.687},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"niente","w":1,"b":"niente","s":266.687,"e":267.15},{"t":"»","w":0,"b":"","s":0,"e":0},{"t":".","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"«","w":0,"b":"","s":0,"e":0},{"t":"Aveva","w":1,"b":"aveva","s":267.381,"e":267.766},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"dato","w":1,"b":"dato","s":267.766,"e":268.075},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"la","w":1,"b":"la","s":268.075,"e":268.229},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"sua","w":1,"b":"sua","s":268.229,"e":268.46},{"t":"parola","w":1,"b":"parola","s":268.46,"e":268.89},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"d'onore","w":1,"b":"d'onore","s":268.89,"e":269.392},{"t":".","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"Ha","w":1,"b":"ha","s":269.464,"e":269.608},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"detto","w":1,"b":"detto","s":269.608,"e":269.966},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"che","w":1,"b":"che","s":269.966,"e":270.181},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"mi","w":1,"b":"mi","s":270.181,"e":270.325},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"avrebbe","w":1,"b":"avrebbe","s":270.325,"e":270.827},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"ricompensato","w":1,"b":"ricompensato","s":270.827,"e":271.688},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"generosamente","w":1,"b":"generosamente","s":271.688,"e":272.62},{"t":"se","w":1,"b":"se","s":272.96,"e":273.136},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"avessi","w":1,"b":"avessi","s":273.136,"e":273.662},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"liberato","w":1,"b":"liberato","s":273.662,"e":274.365},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"dai","w":1,"b":"dai","s":274.365,"e":274.628},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"topi","w":1,"b":"topi","s":274.628,"e":274.98},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"la","w":1,"b":"la","s":274.98,"e":275.155},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"città","w":1,"b":"città","s":275.155,"e":275.594},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"di","w":1,"b":"di","s":275.594,"e":275.77},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"Hamelin","w":1,"b":"hamelin","s":275.77,"e":276.384},{"t":"»","w":0,"b":"","s":0,"e":0},{"t":",","w":0,"b":"","s":0,"e":0},{"t":"rispose","w":1,"b":"rispose","s":276.56,"e":277.159},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"il","w":1,"b":"il","s":277.159,"e":277.33},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"pifferaio","w":1,"b":"pifferaio","s":277.33,"e":278.101},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"seccato","w":1,"b":"seccato","s":278.101,"e":278.7},{"t":".","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"«","w":0,"b":"","s":0,"e":0},{"t":"Non","w":1,"b":"non","s":278.871,"e":279.128},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"mi","w":1,"b":"mi","s":279.128,"e":279.3},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"ricordo","w":1,"b":"ricordo","s":279.3,"e":279.899},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"di","w":1,"b":"di","s":279.899,"e":280.07},{"t":"averti","w":1,"b":"averti","s":280.07,"e":280.562},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"mai","w":1,"b":"mai","s":280.562,"e":280.809},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"detto","w":1,"b":"detto","s":280.809,"e":281.219},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"questo","w":1,"b":"questo","s":281.219,"e":281.712},{"t":"»","w":0,"b":"","s":0,"e":0},{"t":",","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"disse","w":1,"b":"disse","s":281.876,"e":282.286},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"il","w":1,"b":"il","s":282.286,"e":282.45},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"sindaco","w":1,"b":"sindaco","s":282.45,"e":283.025},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"imbroglione","w":1,"b":"imbroglione","s":283.025,"e":283.928},{"t":",","w":0,"b":"","s":0,"e":0},{"t":"scoppiando","w":1,"b":"scoppiando","s":284.01,"e":284.94},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"in","w":1,"b":"in","s":284.94,"e":285.126},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"una","w":1,"b":"una","s":285.126,"e":285.405},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"fragorosa","w":1,"b":"fragorosa","s":285.405,"e":286.242},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"risata","w":1,"b":"risata","s":286.242,"e":286.8},{"t":".","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"«","w":0,"b":"","s":0,"e":0},{"t":"Comunque","w":1,"b":"comunque","s":286.986,"e":287.73},{"t":"ora","w":1,"b":"ora","s":287.73,"e":288.02},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"tutti","w":1,"b":"tutti","s":288.02,"e":288.505},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"i","w":1,"b":"i","s":288.505,"e":288.601},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"topi","w":1,"b":"topi","s":288.601,"e":288.989},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"sono","w":1,"b":"sono","s":288.989,"e":289.376},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"morti","w":1,"b":"morti","s":289.376,"e":289.86},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"e","w":1,"b":"e","s":289.86,"e":289.957},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"non","w":1,"b":"non","s":289.957,"e":290.247},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"torneranno","w":1,"b":"torneranno","s":290.247,"e":291.215},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"di","w":1,"b":"di","s":291.215,"e":291.409},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"certo","w":1,"b":"certo","s":291.409,"e":291.893},{"t":".","w":0,"b":"","s":0,"e":0},{"t":"Ti","w":1,"b":"ti","s":291.99,"e":292.141},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"ringrazio","w":1,"b":"ringrazio","s":292.141,"e":292.821},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"molto","w":1,"b":"molto","s":292.821,"e":293.198},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"anche","w":1,"b":"anche","s":293.198,"e":293.576},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"a","w":1,"b":"a","s":293.576,"e":293.651},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"nome","w":1,"b":"nome","s":293.651,"e":293.953},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"di","w":1,"b":"di","s":293.953,"e":294.104},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"tutta","w":1,"b":"tutta","s":294.104,"e":294.482},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"la","w":1,"b":"la","s":294.482,"e":294.633},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"città","w":1,"b":"città","s":294.633,"e":295.01},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"e","w":1,"b":"e","s":295.01,"e":295.086},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"ti","w":1,"b":"ti","s":295.086,"e":295.237},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"faccio","w":1,"b":"faccio","s":295.237,"e":295.69},{"t":"tanti","w":1,"b":"tanti","s":295.69,"e":296.312},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"auguri","w":1,"b":"auguri","s":296.312,"e":297.058},{"t":".","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"Ora","w":1,"b":"ora","s":297.182,"e":297.555},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"puoi","w":1,"b":"puoi","s":297.555,"e":298.052},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"andare","w":1,"b":"andare","s":298.052,"e":298.798},{"t":"»","w":0,"b":"","s":0,"e":0},{"t":".","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"sta","w":1,"b":"sta","s":299.047,"e":299.42},{"t":"molto","w":1,"b":"molto","s":299.42,"e":299.82},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"attento","w":1,"b":"attento","s":299.82,"e":300.38},{"t":",","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"mormorò","w":1,"b":"mormorò","s":300.46,"e":301.02},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"allora","w":1,"b":"allora","s":301.02,"e":301.5},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"il","w":1,"b":"il","s":301.5,"e":301.66},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"pifferaio","w":1,"b":"pifferaio","s":301.66,"e":302.38},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"con","w":1,"b":"con","s":302.38,"e":302.62},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"un","w":1,"b":"un","s":302.62,"e":302.78},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"viso","w":1,"b":"viso","s":302.78,"e":303.1},{"t":"minaccioso","w":1,"b":"minaccioso","s":303.1,"e":303.912},{"t":".","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"Non","w":1,"b":"non","s":303.993,"e":304.237},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"prenderti","w":1,"b":"prenderti","s":304.237,"e":304.968},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"gioco","w":1,"b":"gioco","s":304.968,"e":305.374},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"di","w":1,"b":"di","s":305.374,"e":305.537},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"me","w":1,"b":"me","s":305.537,"e":305.699},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"perché","w":1,"b":"perché","s":305.699,"e":306.187},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"questa","w":1,"b":"questa","s":306.187,"e":306.674},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"volta","w":1,"b":"volta","s":306.674,"e":307.08},{"t":"potrei","w":1,"b":"potrei","s":307.08,"e":307.664},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"suonare","w":1,"b":"suonare","s":307.664,"e":308.345},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"una","w":1,"b":"una","s":308.345,"e":308.637},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"melodia","w":1,"b":"melodia","s":308.637,"e":309.318},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"molto","w":1,"b":"molto","s":309.318,"e":309.805},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"diversa","w":1,"b":"diversa","s":309.805,"e":310.486},{"t":".","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"Senza","w":1,"b":"senza","s":310.583,"e":311.07},{"t":"aggiungere","w":1,"b":"aggiungere","s":311.07,"e":311.98},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"altro","w":1,"b":"altro","s":311.98,"e":312.435},{"t":",","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"se","w":1,"b":"se","s":312.526,"e":312.708},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"ne","w":1,"b":"ne","s":312.708,"e":312.89},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"andò","w":1,"b":"andò","s":312.89,"e":313.254},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"con","w":1,"b":"con","s":313.254,"e":313.528},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"uno","w":1,"b":"uno","s":313.528,"e":313.801},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"strano","w":1,"b":"strano","s":313.801,"e":314.347},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"sorriso","w":1,"b":"sorriso","s":314.347,"e":314.984},{"t":".","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"Scese","w":1,"b":"scese","s":315.075,"e":315.53},{"t":"nelle","w":1,"b":"nelle","s":315.53,"e":315.899},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"vie","w":1,"b":"vie","s":315.899,"e":316.12},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"di","w":1,"b":"di","s":316.12,"e":316.267},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"Hamelin","w":1,"b":"hamelin","s":316.267,"e":316.783},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"e","w":1,"b":"e","s":316.783,"e":316.857},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"cominciò","w":1,"b":"cominciò","s":316.857,"e":317.447},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"anche","w":1,"b":"anche","s":317.447,"e":317.815},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"a","w":1,"b":"a","s":317.815,"e":317.889},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"attraversare","w":1,"b":"attraversare","s":317.889,"e":318.774},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"la","w":1,"b":"la","s":318.774,"e":318.921},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"città","w":1,"b":"città","s":318.921,"e":319.29},{"t":"con","w":1,"b":"con","s":319.29,"e":319.565},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"passo","w":1,"b":"passo","s":319.565,"e":320.024},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"deciso","w":1,"b":"deciso","s":320.024,"e":320.575},{"t":",","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"con","w":1,"b":"con","s":320.667,"e":320.942},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"il","w":1,"b":"il","s":320.942,"e":321.126},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"suo","w":1,"b":"suo","s":321.126,"e":321.401},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"piffero","w":1,"b":"piffero","s":321.401,"e":322.044},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"di","w":1,"b":"di","s":322.044,"e":322.227},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"legno","w":1,"b":"legno","s":322.227,"e":322.686},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"in","w":1,"b":"in","s":322.686,"e":322.87},{"t":"mano","w":1,"b":"mano","s":322.87,"e":323.147},{"t":".","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"Arrivato","w":1,"b":"arrivato","s":323.216,"e":323.77},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"nella","w":1,"b":"nella","s":323.77,"e":324.117},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"piazza","w":1,"b":"piazza","s":324.117,"e":324.532},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"in","w":1,"b":"in","s":324.532,"e":324.671},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"cui","w":1,"b":"cui","s":324.671,"e":324.879},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"aveva","w":1,"b":"aveva","s":324.879,"e":325.225},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"suonato","w":1,"b":"suonato","s":325.225,"e":325.71},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"la","w":1,"b":"la","s":325.71,"e":325.848},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"prima","w":1,"b":"prima","s":325.848,"e":326.194},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"volta","w":1,"b":"volta","s":326.194,"e":326.541},{"t":",","w":0,"b":"","s":0,"e":0},{"t":"si","w":1,"b":"si","s":326.61,"e":326.755},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"fermò","w":1,"b":"fermò","s":326.755,"e":327.119},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"per","w":1,"b":"per","s":327.119,"e":327.337},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"un","w":1,"b":"un","s":327.337,"e":327.483},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"momento","w":1,"b":"momento","s":327.483,"e":327.992},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"a","w":1,"b":"a","s":327.992,"e":328.065},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"pensare","w":1,"b":"pensare","s":328.065,"e":328.574},{"t":",","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"come","w":1,"b":"come","s":328.646,"e":328.937},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"per","w":1,"b":"per","s":328.937,"e":329.155},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"ricordare","w":1,"b":"ricordare","s":329.155,"e":329.81},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"una","w":1,"b":"una","s":329.81,"e":330.028},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"melodia","w":1,"b":"melodia","s":330.028,"e":330.537},{"t":",","w":0,"b":"","s":0,"e":0},{"t":"e","w":1,"b":"e","s":330.77,"e":330.856},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"cominció","w":1,"b":"cominció","s":330.856,"e":331.546},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"una","w":1,"b":"una","s":331.546,"e":331.805},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"canzoncina","w":1,"b":"canzoncina","s":331.805,"e":332.668},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"allegra","w":1,"b":"allegra","s":332.668,"e":333.272},{"t":",","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"diversa","w":1,"b":"diversa","s":333.358,"e":333.962},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"dalla","w":1,"b":"dalla","s":333.962,"e":334.393},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"prima","w":1,"b":"prima","s":334.393,"e":334.825},{"t":".","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"All'improvviso","w":1,"b":"all'improvviso","s":334.911,"e":336.119},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"tutti","w":1,"b":"tutti","s":336.119,"e":336.55},{"t":"i","w":1,"b":"i","s":336.55,"e":336.634},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"bambini","w":1,"b":"bambini","s":336.634,"e":337.22},{"t":",","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"ma","w":1,"b":"ma","s":337.304,"e":337.472},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"proprio","w":1,"b":"proprio","s":337.472,"e":338.059},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"tutti","w":1,"b":"tutti","s":338.059,"e":338.478},{"t":",","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"iniziarono","w":1,"b":"iniziarono","s":338.561,"e":339.4},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"a","w":1,"b":"a","s":339.4,"e":339.483},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"correre","w":1,"b":"correre","s":339.483,"e":340.07},{"t":"fuori","w":1,"b":"fuori","s":340.07,"e":340.524},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"dalle","w":1,"b":"dalle","s":340.524,"e":340.978},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"case","w":1,"b":"case","s":340.978,"e":341.341},{"t":",","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"incantati","w":1,"b":"incantati","s":341.432,"e":342.248},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"dalla","w":1,"b":"dalla","s":342.248,"e":342.702},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"sua","w":1,"b":"sua","s":342.702,"e":342.975},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"musica","w":1,"b":"musica","s":342.975,"e":343.519},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"e","w":1,"b":"e","s":343.519,"e":343.61},{"t":"dalle","w":1,"b":"dalle","s":343.61,"e":344.088},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"note","w":1,"b":"note","s":344.088,"e":344.47},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"magiche","w":1,"b":"magiche","s":344.47,"e":345.138},{"t":".","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"seguivano","w":1,"b":"seguivano","s":345.234,"e":346.094},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"il","w":1,"b":"il","s":346.094,"e":346.285},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"buffo","w":1,"b":"buffo","s":346.285,"e":346.762},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"omino","w":1,"b":"omino","s":346.762,"e":347.24},{"t":"con","w":1,"b":"con","s":347.24,"e":347.49},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"le","w":1,"b":"le","s":347.49,"e":347.657},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"scarpe","w":1,"b":"scarpe","s":347.657,"e":348.157},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"a","w":1,"b":"a","s":348.157,"e":348.24},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"punta","w":1,"b":"punta","s":348.24,"e":348.657},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"e","w":1,"b":"e","s":348.657,"e":348.74},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"la","w":1,"b":"la","s":348.74,"e":348.907},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"piuma","w":1,"b":"piuma","s":348.907,"e":349.323},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"sul","w":1,"b":"sul","s":349.323,"e":349.573},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"cappello","w":1,"b":"cappello","s":349.573,"e":350.24},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"dimenticando","w":1,"b":"dimenticando","s":350.24,"e":351.24},{"t":"i","w":1,"b":"i","s":351.24,"e":351.333},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"loro","w":1,"b":"loro","s":351.333,"e":351.703},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"giochi","w":1,"b":"giochi","s":351.703,"e":352.26},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"e","w":1,"b":"e","s":352.26,"e":352.352},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"quello","w":1,"b":"quello","s":352.352,"e":352.908},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"che","w":1,"b":"che","s":352.908,"e":353.186},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"stavano","w":1,"b":"stavano","s":353.186,"e":353.835},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"facendo","w":1,"b":"facendo","s":353.835,"e":354.484},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"presto","w":1,"b":"presto","s":354.484,"e":355.04},{"t":"un","w":1,"b":"un","s":355.04,"e":355.192},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"allegro","w":1,"b":"allegro","s":355.192,"e":355.726},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"corteo","w":1,"b":"corteo","s":355.726,"e":356.183},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"di","w":1,"b":"di","s":356.183,"e":356.335},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"centinaia","w":1,"b":"centinaia","s":356.335,"e":357.02},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"di","w":1,"b":"di","s":357.02,"e":357.173},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"bambini","w":1,"b":"bambini","s":357.173,"e":357.706},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"attraversava","w":1,"b":"attraversava","s":357.706,"e":358.62},{"t":"la","w":1,"b":"la","s":358.62,"e":358.814},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"città","w":1,"b":"città","s":358.814,"e":359.3},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"proprio","w":1,"b":"proprio","s":359.3,"e":359.979},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"come","w":1,"b":"come","s":359.979,"e":360.367},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"era","w":1,"b":"era","s":360.367,"e":360.659},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"successo","w":1,"b":"successo","s":360.659,"e":361.435},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"con","w":1,"b":"con","s":361.435,"e":361.726},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"i","w":1,"b":"i","s":361.726,"e":361.823},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"topolini","w":1,"b":"topolini","s":361.823,"e":362.6},{"t":"la","w":1,"b":"la","s":362.6,"e":362.77},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"musica","w":1,"b":"musica","s":362.77,"e":363.279},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"infatti","w":1,"b":"infatti","s":363.279,"e":363.873},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"trascinava","w":1,"b":"trascinava","s":363.873,"e":364.722},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"i","w":1,"b":"i","s":364.722,"e":364.807},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"piccoli","w":1,"b":"piccoli","s":364.807,"e":365.402},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"sempre","w":1,"b":"sempre","s":365.402,"e":365.911},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"più","w":1,"b":"più","s":365.911,"e":366.166},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"lontano","w":1,"b":"lontano","s":366.166,"e":366.76},{"t":"attraverso","w":1,"b":"attraverso","s":366.76,"e":367.828},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"i","w":1,"b":"i","s":367.828,"e":367.935},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"prati","w":1,"b":"prati","s":367.935,"e":368.469},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"e","w":1,"b":"e","s":368.469,"e":368.576},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"i","w":1,"b":"i","s":368.576,"e":368.683},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"boschi","w":1,"b":"boschi","s":368.683,"e":369.324},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"finché","w":1,"b":"finché","s":369.324,"e":369.965},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"giunsero","w":1,"b":"giunsero","s":369.965,"e":370.82},{"t":"ai","w":1,"b":"ai","s":370.82,"e":371.03},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"piedi","w":1,"b":"piedi","s":371.03,"e":371.555},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"di","w":1,"b":"di","s":371.555,"e":371.765},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"un'immensa","w":1,"b":"un'immensa","s":371.765,"e":372.815},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"montagna","w":1,"b":"montagna","s":372.815,"e":373.655},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"il","w":1,"b":"il","s":373.655,"e":373.865},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"pifferaio","w":1,"b":"pifferaio","s":373.865,"e":374.81},{"t":"subito","w":1,"b":"subito","s":374.81,"e":375.442},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"cambiò","w":1,"b":"cambiò","s":375.442,"e":376.074},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"melodia","w":1,"b":"melodia","s":376.074,"e":376.811},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"e","w":1,"b":"e","s":376.811,"e":376.916},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"magicamente","w":1,"b":"magicamente","s":376.916,"e":378.074},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"una","w":1,"b":"una","s":378.074,"e":378.39},{"t":"porta","w":1,"b":"porta","s":378.39,"e":378.844},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"di","w":1,"b":"di","s":378.844,"e":379.025},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"pietra","w":1,"b":"pietra","s":379.025,"e":379.57},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"cominciò","w":1,"b":"cominciò","s":379.57,"e":380.295},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"a","w":1,"b":"a","s":380.295,"e":380.386},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"aprirsi","w":1,"b":"aprirsi","s":380.386,"e":381.021},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"entrò","w":1,"b":"entrò","s":381.021,"e":381.475},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"svelto","w":1,"b":"svelto","s":381.475,"e":382.019},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"e","w":1,"b":"e","s":382.019,"e":382.11},{"t":"tutti","w":1,"b":"tutti","s":382.11,"e":382.508},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"lo","w":1,"b":"lo","s":382.508,"e":382.667},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"seguirono","w":1,"b":"seguirono","s":382.667,"e":383.384},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"soltanto","w":1,"b":"soltanto","s":383.384,"e":384.021},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"uno","w":1,"b":"uno","s":384.021,"e":384.259},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"di","w":1,"b":"di","s":384.259,"e":384.419},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"loro","w":1,"b":"loro","s":384.419,"e":384.737},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"era","w":1,"b":"era","s":384.737,"e":384.976},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"rimasto","w":1,"b":"rimasto","s":384.976,"e":385.533},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"indietro","w":1,"b":"indietro","s":385.533,"e":386.17},{"t":"perché","w":1,"b":"perché","s":386.17,"e":386.792},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"era","w":1,"b":"era","s":386.792,"e":387.102},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"un","w":1,"b":"un","s":387.102,"e":387.309},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"po'","w":1,"b":"po","s":387.309,"e":387.62},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"lento","w":1,"b":"lento","s":387.62,"e":388.138},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"ehi","w":1,"b":"ehi","s":388.138,"e":388.449},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"pifferaico","w":1,"b":"pifferaico","s":388.449,"e":389.485},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"bambini","w":1,"b":"bambini","s":389.485,"e":390.21},{"t":"aspettatemi","w":1,"b":"aspettatemi","s":390.21,"e":391.279},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"voglio","w":1,"b":"voglio","s":391.279,"e":391.863},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"venire","w":1,"b":"venire","s":391.863,"e":392.446},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"anch'io","w":1,"b":"anch'io","s":392.446,"e":393.126},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"con","w":1,"b":"con","s":393.126,"e":393.418},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"voi","w":1,"b":"voi","s":393.418,"e":393.71},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"gridava","w":1,"b":"gridava","s":393.71,"e":394.39},{"t":"ma","w":1,"b":"ma","s":394.39,"e":394.547},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"la","w":1,"b":"la","s":394.547,"e":394.704},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"misteriosa","w":1,"b":"misteriosa","s":394.704,"e":395.488},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"porta","w":1,"b":"porta","s":395.488,"e":395.88},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"di","w":1,"b":"di","s":395.88,"e":396.037},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"piazza","w":1,"b":"piazza","s":396.037,"e":396.508},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"la","w":1,"b":"la","s":396.508,"e":396.665},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"pietra","w":1,"b":"pietra","s":396.665,"e":397.135},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"ormai","w":1,"b":"ormai","s":397.135,"e":397.527},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"si","w":1,"b":"si","s":397.527,"e":397.684},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"era","w":1,"b":"era","s":397.684,"e":397.919},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"chiusa","w":1,"b":"chiusa","s":397.919,"e":398.39},{"t":"In","w":1,"b":"in","s":398.57,"e":398.755},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"quel","w":1,"b":"quel","s":398.755,"e":399.125},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"momento","w":1,"b":"momento","s":399.125,"e":399.772},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"arrivarono","w":1,"b":"arrivarono","s":399.772,"e":400.697},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"di","w":1,"b":"di","s":400.697,"e":400.882},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"corsa","w":1,"b":"corsa","s":400.882,"e":401.345},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"i","w":1,"b":"i","s":401.345,"e":401.438},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"genitori","w":1,"b":"genitori","s":401.438,"e":402.178},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"e","w":1,"b":"e","s":402.178,"e":402.27},{"t":"il","w":1,"b":"il","s":402.27,"e":402.45},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"bambino","w":1,"b":"bambino","s":402.45,"e":403.082},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"raccontò","w":1,"b":"raccontò","s":403.082,"e":403.804},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"loro","w":1,"b":"loro","s":403.804,"e":404.165},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"ogni","w":1,"b":"ogni","s":404.165,"e":404.526},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"cosa","w":1,"b":"cosa","s":404.526,"e":404.887},{"t":".","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"Aspettarono","w":1,"b":"aspettarono","s":404.977,"e":405.97},{"t":"fino","w":1,"b":"fino","s":405.97,"e":406.299},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"a","w":1,"b":"a","s":406.299,"e":406.381},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"sera","w":1,"b":"sera","s":406.381,"e":406.71},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"ma","w":1,"b":"ma","s":406.71,"e":406.874},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"nessuno","w":1,"b":"nessuno","s":406.874,"e":407.449},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"rispondeva","w":1,"b":"rispondeva","s":407.449,"e":408.271},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"e","w":1,"b":"e","s":408.271,"e":408.353},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"decisero","w":1,"b":"decisero","s":408.353,"e":409.01},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"di","w":1,"b":"di","s":409.01,"e":409.175},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"tornare","w":1,"b":"tornare","s":409.175,"e":409.75},{"t":"a","w":1,"b":"a","s":409.75,"e":409.858},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"casa","w":1,"b":"casa","s":409.858,"e":410.29},{"t":".","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"L'unico","w":1,"b":"l'unico","s":410.398,"e":411.154},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"bambino","w":1,"b":"bambino","s":411.154,"e":411.91},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"rimasto","w":1,"b":"rimasto","s":411.91,"e":412.666},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"a","w":1,"b":"a","s":412.666,"e":412.774},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"Hamelin","w":1,"b":"hamelin","s":412.774,"e":413.53},{"t":"era","w":1,"b":"era","s":413.53,"e":413.798},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"davvero","w":1,"b":"davvero","s":413.798,"e":414.423},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"triste","w":1,"b":"triste","s":414.423,"e":414.959},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"e","w":1,"b":"e","s":414.959,"e":415.048},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"si","w":1,"b":"si","s":415.048,"e":415.227},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"sentiva","w":1,"b":"sentiva","s":415.227,"e":415.852},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"terribilmente","w":1,"b":"terribilmente","s":415.852,"e":417.013},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"solo","w":1,"b":"solo","s":417.013,"e":417.37},{"t":"senza","w":1,"b":"senza","s":417.37,"e":417.86},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"nessuno","w":1,"b":"nessuno","s":417.86,"e":418.546},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"con","w":1,"b":"con","s":418.546,"e":418.84},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"cui","w":1,"b":"cui","s":418.84,"e":419.134},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"giocare","w":1,"b":"giocare","s":419.134,"e":419.82},{"t":".","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"il","w":1,"b":"il","s":419.918,"e":420.114},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"suo","w":1,"b":"suo","s":420.114,"e":420.408},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"unico","w":1,"b":"unico","s":420.408,"e":420.898},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"desiderio","w":1,"b":"desiderio","s":420.898,"e":421.78},{"t":"era","w":1,"b":"era","s":421.78,"e":422.07},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"raggiungere","w":1,"b":"raggiungere","s":422.07,"e":423.133},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"gli","w":1,"b":"gli","s":423.133,"e":423.423},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"altri","w":1,"b":"altri","s":423.423,"e":423.907},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"bambini","w":1,"b":"bambini","s":423.907,"e":424.583},{"t":".","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"Così","w":1,"b":"così","s":424.68,"e":425.067},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"una","w":1,"b":"una","s":425.067,"e":425.357},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"mattina","w":1,"b":"mattina","s":425.357,"e":426.033},{"t":",","w":0,"b":"","s":0,"e":0},{"t":"senza","w":1,"b":"senza","s":426.13,"e":426.53},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"dir","w":1,"b":"dir","s":426.53,"e":426.77},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"niente","w":1,"b":"niente","s":426.77,"e":427.25},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"a","w":1,"b":"a","s":427.25,"e":427.33},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"nessuno","w":1,"b":"nessuno","s":427.33,"e":427.89},{"t":",","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"si","w":1,"b":"si","s":427.97,"e":428.13},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"allontanò","w":1,"b":"allontanò","s":428.13,"e":428.85},{"t":",","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"ripercorrendo","w":1,"b":"ripercorrendo","s":428.93,"e":429.97},{"t":"il","w":1,"b":"il","s":429.97,"e":430.131},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"sentiero","w":1,"b":"sentiero","s":430.131,"e":430.774},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"che","w":1,"b":"che","s":430.774,"e":431.016},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"aveva","w":1,"b":"aveva","s":431.016,"e":431.418},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"fatto","w":1,"b":"fatto","s":431.418,"e":431.82},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"quel","w":1,"b":"quel","s":431.82,"e":432.141},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"giorno","w":1,"b":"giorno","s":432.141,"e":432.624},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"con","w":1,"b":"con","s":432.624,"e":432.865},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"i","w":1,"b":"i","s":432.865,"e":432.946},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"suoi","w":1,"b":"suoi","s":432.946,"e":433.267},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"amici","w":1,"b":"amici","s":433.267,"e":433.67},{"t":".","w":0,"b":"","s":0,"e":0},{"t":"Si","w":1,"b":"si","s":433.75,"e":433.912},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"era","w":1,"b":"era","s":433.912,"e":434.154},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"costruito","w":1,"b":"costruito","s":434.154,"e":434.881},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"con","w":1,"b":"con","s":434.881,"e":435.123},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"un","w":1,"b":"un","s":435.123,"e":435.285},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"bastoncino","w":1,"b":"bastoncino","s":435.285,"e":436.092},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"di","w":1,"b":"di","s":436.092,"e":436.254},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"legno","w":1,"b":"legno","s":436.254,"e":436.658},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"un","w":1,"b":"un","s":436.658,"e":436.819},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"piccolo","w":1,"b":"piccolo","s":436.819,"e":437.385},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"piffero","w":1,"b":"piffero","s":437.385,"e":437.95},{"t":"e","w":1,"b":"e","s":437.95,"e":438.027},{"t":",","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"arrivato","w":1,"b":"arrivato","s":438.104,"e":438.718},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"di","w":1,"b":"di","s":438.718,"e":438.872},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"fronte","w":1,"b":"fronte","s":438.872,"e":439.332},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"alla","w":1,"b":"alla","s":439.332,"e":439.64},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"grande","w":1,"b":"grande","s":439.64,"e":440.1},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"porta","w":1,"b":"porta","s":440.1,"e":440.484},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"di","w":1,"b":"di","s":440.484,"e":440.638},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"pietra","w":1,"b":"pietra","s":440.638,"e":441.099},{"t":",","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"cominciò","w":1,"b":"cominciò","s":441.176,"e":441.79},{"t":"a","w":1,"b":"a","s":441.79,"e":441.881},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"suonare","w":1,"b":"suonare","s":441.881,"e":442.514},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"l'allegra","w":1,"b":"l'allegra","s":442.514,"e":443.329},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"melodia","w":1,"b":"melodia","s":443.329,"e":443.962},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"del","w":1,"b":"del","s":443.962,"e":444.234},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"pifferaio","w":1,"b":"pifferaio","s":444.234,"e":445.048},{"t":",","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"che","w":1,"b":"che","s":445.139,"e":445.41},{"t":"non","w":1,"b":"non","s":445.41,"e":445.677},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"aveva","w":1,"b":"aveva","s":445.677,"e":446.122},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"mai","w":1,"b":"mai","s":446.122,"e":446.39},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"dimenticato","w":1,"b":"dimenticato","s":446.39,"e":447.369},{"t":",","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"a","w":1,"b":"a","s":447.458,"e":447.547},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"un","w":1,"b":"un","s":447.547,"e":447.725},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"tratto","w":1,"b":"tratto","s":447.725,"e":448.26},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"dall'altra","w":1,"b":"dall'altra","s":448.26,"e":449.15},{"t":"parte","w":1,"b":"parte","s":449.75,"e":450.217},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"della","w":1,"b":"della","s":450.217,"e":450.683},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"roccia","w":1,"b":"roccia","s":450.683,"e":451.243},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"un","w":1,"b":"un","s":451.243,"e":451.43},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"flauto","w":1,"b":"flauto","s":451.43,"e":451.99},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"rispose","w":1,"b":"rispose","s":451.99,"e":452.643},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"alla","w":1,"b":"alla","s":452.643,"e":453.017},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"sua","w":1,"b":"sua","s":453.017,"e":453.297},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"musica","w":1,"b":"musica","s":453.297,"e":453.857},{"t":".","w":0,"b":"","s":0,"e":0},{"t":"Il","w":1,"b":"il","s":453.95,"e":454.115},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"bambino","w":1,"b":"bambino","s":454.115,"e":454.695},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"ricominciò","w":1,"b":"ricominciò","s":454.695,"e":455.522},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"a","w":1,"b":"a","s":455.522,"e":455.605},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"suonare","w":1,"b":"suonare","s":455.605,"e":456.184},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"e","w":1,"b":"e","s":456.184,"e":456.266},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"le","w":1,"b":"le","s":456.266,"e":456.432},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"note","w":1,"b":"note","s":456.432,"e":456.763},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"del","w":1,"b":"del","s":456.763,"e":457.011},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"piffero","w":1,"b":"piffero","s":457.011,"e":457.59},{"t":"magico","w":1,"b":"magico","s":457.59,"e":458.123},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"risposero","w":1,"b":"risposero","s":458.123,"e":458.923},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"ancora","w":1,"b":"ancora","s":458.923,"e":459.456},{"t":".","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"La","w":1,"b":"la","s":459.544,"e":459.722},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"roccia","w":1,"b":"roccia","s":459.722,"e":460.255},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"della","w":1,"b":"della","s":460.255,"e":460.699},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"montagna","w":1,"b":"montagna","s":460.699,"e":461.41},{"t":"iniziò","w":1,"b":"iniziò","s":461.41,"e":462.01},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"a","w":1,"b":"a","s":462.01,"e":462.11},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"tremare","w":1,"b":"tremare","s":462.11,"e":462.81},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"come","w":1,"b":"come","s":462.81,"e":463.21},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"la","w":1,"b":"la","s":463.21,"e":463.41},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"prima","w":1,"b":"prima","s":463.41,"e":463.91},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"volta","w":1,"b":"volta","s":463.91,"e":464.41},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"e","w":1,"b":"e","s":464.41,"e":464.51},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"la","w":1,"b":"la","s":464.51,"e":464.71},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"grande","w":1,"b":"grande","s":464.71,"e":465.31},{"t":"porta","w":1,"b":"porta","s":465.31,"e":465.819},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"lentamente","w":1,"b":"lentamente","s":465.819,"e":466.836},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"si","w":1,"b":"si","s":466.836,"e":467.039},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"aprì","w":1,"b":"aprì","s":467.039,"e":467.446},{"t":".","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"Tutti","w":1,"b":"tutti","s":467.548,"e":468.056},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"i","w":1,"b":"i","s":468.056,"e":468.158},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"bambini","w":1,"b":"bambini","s":468.158,"e":468.87},{"t":"di","w":1,"b":"di","s":468.87,"e":469.048},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"Hamelin","w":1,"b":"hamelin","s":469.048,"e":469.671},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"uscirono","w":1,"b":"uscirono","s":469.671,"e":470.383},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"correndo","w":1,"b":"correndo","s":470.383,"e":471.095},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"felici","w":1,"b":"felici","s":471.095,"e":471.629},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"sui","w":1,"b":"sui","s":471.629,"e":471.896},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"prati","w":1,"b":"prati","s":471.896,"e":472.341},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"e","w":1,"b":"e","s":472.341,"e":472.43},{"t":"abbracciarono","w":1,"b":"abbracciarono","s":472.43,"e":473.562},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"con","w":1,"b":"con","s":473.562,"e":473.823},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"gioia","w":1,"b":"gioia","s":473.823,"e":474.259},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"il","w":1,"b":"il","s":474.259,"e":474.433},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"bambino","w":1,"b":"bambino","s":474.433,"e":475.043},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"che","w":1,"b":"che","s":475.043,"e":475.304},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"li","w":1,"b":"li","s":475.304,"e":475.478},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"aveva","w":1,"b":"aveva","s":475.478,"e":475.913},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"salvati","w":1,"b":"salvati","s":475.913,"e":476.523},{"t":".","w":0,"b":"","s":0,"e":0},{"t":"Il","w":1,"b":"il","s":477.21,"e":477.411},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"pifferaio","w":1,"b":"pifferaio","s":477.411,"e":478.313},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"ti","w":1,"b":"ti","s":478.313,"e":478.514},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"vuole","w":1,"b":"vuole","s":478.514,"e":479.015},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"parlare","w":1,"b":"parlare","s":479.015,"e":479.717},{"t":",","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"gli","w":1,"b":"gli","s":479.817,"e":480.118},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"dissero","w":1,"b":"dissero","s":480.118,"e":480.82},{"t":".","w":0,"b":"","s":0,"e":0},{"t":"Così","w":1,"b":"così","s":480.92,"e":481.297},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"il","w":1,"b":"il","s":481.297,"e":481.485},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"piccolo","w":1,"b":"piccolo","s":481.485,"e":482.144},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"bambino","w":1,"b":"bambino","s":482.144,"e":482.803},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"entrò","w":1,"b":"entrò","s":482.803,"e":483.274},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"senza","w":1,"b":"senza","s":483.274,"e":483.744},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"avere","w":1,"b":"avere","s":483.744,"e":484.215},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"timore","w":1,"b":"timore","s":484.215,"e":484.78},{"t":"nella","w":1,"b":"nella","s":484.78,"e":485.221},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"grande","w":1,"b":"grande","s":485.221,"e":485.751},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"montagna","w":1,"b":"montagna","s":485.751,"e":486.457},{"t":",","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"curioso","w":1,"b":"curioso","s":486.545,"e":487.163},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"di","w":1,"b":"di","s":487.163,"e":487.34},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"scoprire","w":1,"b":"scoprire","s":487.34,"e":488.046},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"il","w":1,"b":"il","s":488.046,"e":488.222},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"segreto","w":1,"b":"segreto","s":488.222,"e":488.84},{"t":"della","w":1,"b":"della","s":488.84,"e":489.437},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"musica","w":1,"b":"musica","s":489.437,"e":490.154},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"magica","w":1,"b":"magica","s":490.154,"e":490.87},{"t":".","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"Intanto","w":1,"b":"intanto","s":490.989,"e":491.825},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"ad","w":1,"b":"ad","s":491.825,"e":492.064},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"Hamelin","w":1,"b":"hamelin","s":492.064,"e":492.9},{"t":"il","w":1,"b":"il","s":492.9,"e":493.075},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"sindaco","w":1,"b":"sindaco","s":493.075,"e":493.686},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"se","w":1,"b":"se","s":493.686,"e":493.86},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"ne","w":1,"b":"ne","s":493.86,"e":494.035},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"stava","w":1,"b":"stava","s":494.035,"e":494.472},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"rinchiuso","w":1,"b":"rinchiuso","s":494.472,"e":495.258},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"nel","w":1,"b":"nel","s":495.258,"e":495.52},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"suo","w":1,"b":"suo","s":495.52,"e":495.781},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"palazzo","w":1,"b":"palazzo","s":495.781,"e":496.393},{"t":",","w":0,"b":"","s":0,"e":0},{"t":"tremando","w":1,"b":"tremando","s":496.48,"e":497.124},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"di","w":1,"b":"di","s":497.124,"e":497.285},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"paura","w":1,"b":"paura","s":497.285,"e":497.687},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"per","w":1,"b":"per","s":497.687,"e":497.928},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"quello","w":1,"b":"quello","s":497.928,"e":498.411},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"che","w":1,"b":"che","s":498.411,"e":498.652},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"aveva","w":1,"b":"aveva","s":498.652,"e":499.055},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"combinato","w":1,"b":"combinato","s":499.055,"e":499.779},{"t":".","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"Ma","w":1,"b":"ma","s":499.859,"e":500.02},{"t":"ormai","w":1,"b":"ormai","s":500.02,"e":500.498},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"era","w":1,"b":"era","s":500.498,"e":500.785},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"troppo","w":1,"b":"troppo","s":500.785,"e":501.359},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"tardi","w":1,"b":"tardi","s":501.359,"e":501.838},{"t":".","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"Nessuno","w":1,"b":"nessuno","s":501.934,"e":502.603},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"più","w":1,"b":"più","s":502.603,"e":502.89},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"rideva","w":1,"b":"rideva","s":502.89,"e":503.464},{"t":",","w":0,"b":"","s":0,"e":0},{"t":"nessuno","w":1,"b":"nessuno","s":503.56,"e":504.099},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"più","w":1,"b":"più","s":504.099,"e":504.33},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"cantava","w":1,"b":"cantava","s":504.33,"e":504.869},{"t":",","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"non","w":1,"b":"non","s":504.946,"e":505.177},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"c'erano","w":1,"b":"c'erano","s":505.177,"e":505.717},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"le","w":1,"b":"le","s":505.717,"e":505.871},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"voci","w":1,"b":"voci","s":505.871,"e":506.179},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"dei","w":1,"b":"dei","s":506.179,"e":506.41},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"bambini","w":1,"b":"bambini","s":506.41,"e":506.949},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"che","w":1,"b":"che","s":506.949,"e":507.18},{"t":"giocavano","w":1,"b":"giocavano","s":507.18,"e":507.877},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"nelle","w":1,"b":"nelle","s":507.877,"e":508.264},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"strade","w":1,"b":"strade","s":508.264,"e":508.729},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"e","w":1,"b":"e","s":508.729,"e":508.806},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"tutti","w":1,"b":"tutti","s":508.806,"e":509.194},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"erano","w":1,"b":"erano","s":509.194,"e":509.581},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"preoccupati","w":1,"b":"preoccupati","s":509.581,"e":510.433},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"per","w":1,"b":"per","s":510.433,"e":510.665},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"il","w":1,"b":"il","s":510.665,"e":510.82},{"t":"piccolo","w":1,"b":"piccolo","s":510.82,"e":511.465},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"che","w":1,"b":"che","s":511.465,"e":511.742},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"era","w":1,"b":"era","s":511.742,"e":512.019},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"partito","w":1,"b":"partito","s":512.019,"e":512.664},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"solo","w":1,"b":"solo","s":512.664,"e":513.033},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"e","w":1,"b":"e","s":513.033,"e":513.125},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"non","w":1,"b":"non","s":513.125,"e":513.401},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"era","w":1,"b":"era","s":513.401,"e":513.678},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"più","w":1,"b":"più","s":513.678,"e":513.955},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"tornato","w":1,"b":"tornato","s":513.955,"e":514.6},{"t":"improvvisamente","w":1,"b":"improvvisamente","s":514.6,"e":515.941},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"da","w":1,"b":"da","s":515.941,"e":516.12},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"lontano","w":1,"b":"lontano","s":516.12,"e":516.745},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"sentirono","w":1,"b":"sentirono","s":516.745,"e":517.55},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"un","w":1,"b":"un","s":517.55,"e":517.729},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"allegro","w":1,"b":"allegro","s":517.729,"e":518.354},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"frastuono","w":1,"b":"frastuono","s":518.354,"e":519.159},{"t":"I","w":1,"b":"i","s":519.64,"e":519.708},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"cittadini","w":1,"b":"cittadini","s":519.708,"e":520.317},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"di","w":1,"b":"di","s":520.317,"e":520.452},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"Hamelin","w":1,"b":"hamelin","s":520.452,"e":520.926},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"si","w":1,"b":"si","s":520.926,"e":521.061},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"precipitarono","w":1,"b":"precipitarono","s":521.061,"e":521.941},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"a","w":1,"b":"a","s":521.941,"e":522.009},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"guardare","w":1,"b":"guardare","s":522.009,"e":522.55},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"cosa","w":1,"b":"cosa","s":522.55,"e":522.821},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"stava","w":1,"b":"stava","s":522.821,"e":523.159},{"t":"succedendo","w":1,"b":"succedendo","s":523.159,"e":524.074},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"e","w":1,"b":"e","s":524.074,"e":524.165},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"videro","w":1,"b":"videro","s":524.165,"e":524.714},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"un","w":1,"b":"un","s":524.714,"e":524.897},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"corteo","w":1,"b":"corteo","s":524.897,"e":525.445},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"di","w":1,"b":"di","s":525.445,"e":525.628},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"più","w":1,"b":"più","s":525.628,"e":525.903},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"di","w":1,"b":"di","s":525.903,"e":526.085},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"3","w":0,"b":"","s":0,"e":0},{"t":"0","w":0,"b":"","s":0,"e":0},{"t":"0","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"bambini","w":1,"b":"bambini","s":526.36,"e":527.0},{"t":"che","w":1,"b":"che","s":527.0,"e":527.243},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"scendeva","w":1,"b":"scendeva","s":527.243,"e":527.889},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"attraverso","w":1,"b":"attraverso","s":527.889,"e":528.698},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"i","w":1,"b":"i","s":528.698,"e":528.779},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"prati","w":1,"b":"prati","s":528.779,"e":529.183},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"della","w":1,"b":"della","s":529.183,"e":529.587},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"grande","w":1,"b":"grande","s":529.587,"e":530.072},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"montagna","w":1,"b":"montagna","s":530.072,"e":530.719},{"t":".","w":0,"b":"","s":0,"e":0},{"t":"Tutti","w":1,"b":"tutti","s":531.0,"e":531.505},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"cantavano","w":1,"b":"cantavano","s":531.505,"e":532.415},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"e","w":1,"b":"e","s":532.415,"e":532.516},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"correvano","w":1,"b":"correvano","s":532.516,"e":533.426},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"allegramente","w":1,"b":"allegramente","s":533.426,"e":534.639},{"t":",","w":0,"b":"","s":0,"e":0},{"t":"preceduti","w":1,"b":"preceduti","s":534.74,"e":535.449},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"dal","w":1,"b":"dal","s":535.449,"e":535.685},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"piccolo","w":1,"b":"piccolo","s":535.685,"e":536.236},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"bambino","w":1,"b":"bambino","s":536.236,"e":536.788},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"che","w":1,"b":"che","s":536.788,"e":537.024},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"stringeva","w":1,"b":"stringeva","s":537.024,"e":537.732},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"tra","w":1,"b":"tra","s":537.732,"e":537.969},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"le","w":1,"b":"le","s":537.969,"e":538.126},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"mani","w":1,"b":"mani","s":538.126,"e":538.441},{"t":",","w":0,"b":"","s":0,"e":0},{"t":"con","w":1,"b":"con","s":538.52,"e":538.764},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"gli","w":1,"b":"gli","s":538.764,"e":539.008},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"occhi","w":1,"b":"occhi","s":539.008,"e":539.415},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"che","w":1,"b":"che","s":539.415,"e":539.659},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"gli","w":1,"b":"gli","s":539.659,"e":539.903},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"luccicavano","w":1,"b":"luccicavano","s":539.903,"e":540.798},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"dalla","w":1,"b":"dalla","s":540.798,"e":541.205},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"felicità","w":1,"b":"felicità","s":541.205,"e":541.856},{"t":",","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"un","w":1,"b":"un","s":541.937,"e":542.1},{"t":"meraviglioso","w":1,"b":"meraviglioso","s":542.1,"e":543.548},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"piffero","w":1,"b":"piffero","s":543.548,"e":544.393},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"di","w":1,"b":"di","s":544.393,"e":544.634},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"legno","w":1,"b":"legno","s":544.634,"e":545.237},{"t":".","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"Era","w":1,"b":"era","s":545.358,"e":545.72},{"t":"proprio","w":1,"b":"proprio","s":545.72,"e":546.258},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"il","w":1,"b":"il","s":546.258,"e":546.412},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"piffero","w":1,"b":"piffero","s":546.412,"e":546.951},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"magico","w":1,"b":"magico","s":546.951,"e":547.412},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"che","w":1,"b":"che","s":547.412,"e":547.643},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"l'uomo","w":1,"b":"l'uomo","s":547.643,"e":548.105},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"con","w":1,"b":"con","s":548.105,"e":548.335},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"la","w":1,"b":"la","s":548.335,"e":548.489},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"piuma","w":1,"b":"piuma","s":548.489,"e":548.874},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"sul","w":1,"b":"sul","s":548.874,"e":549.105},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"cappello","w":1,"b":"cappello","s":549.105,"e":549.72},{"t":"gli","w":1,"b":"gli","s":549.72,"e":549.972},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"aveva","w":1,"b":"aveva","s":549.972,"e":550.393},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"regalato","w":1,"b":"regalato","s":550.393,"e":551.065},{"t":".","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"Non","w":1,"b":"non","s":551.15,"e":551.402},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"vi","w":1,"b":"vi","s":551.402,"e":551.57},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"dico","w":1,"b":"dico","s":551.57,"e":551.906},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"gli","w":1,"b":"gli","s":551.906,"e":552.159},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"abbracci","w":1,"b":"abbracci","s":552.159,"e":552.831},{"t":",","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"i","w":1,"b":"i","s":552.915,"e":553.0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"baci","w":1,"b":"baci","s":553.0,"e":553.336},{"t":",","w":0,"b":"","s":0,"e":0},{"t":"i","w":1,"b":"i","s":553.42,"e":553.534},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"salti","w":1,"b":"salti","s":553.534,"e":554.104},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"di","w":1,"b":"di","s":554.104,"e":554.332},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"gioia","w":1,"b":"gioia","s":554.332,"e":554.901},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"dei","w":1,"b":"dei","s":554.901,"e":555.243},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"genitori","w":1,"b":"genitori","s":555.243,"e":556.155},{"t":".","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"A","w":1,"b":"a","s":556.268,"e":556.382},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"Hamelin","w":1,"b":"hamelin","s":556.382,"e":557.18},{"t":"si","w":1,"b":"si","s":557.18,"e":557.42},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"fece","w":1,"b":"fece","s":557.42,"e":557.9},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"festa","w":1,"b":"festa","s":557.9,"e":558.5},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"per","w":1,"b":"per","s":558.5,"e":558.86},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"tre","w":1,"b":"tre","s":558.86,"e":559.22},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"giorni","w":1,"b":"giorni","s":559.22,"e":559.94},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"e","w":1,"b":"e","s":559.94,"e":560.06},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"tre","w":1,"b":"tre","s":560.06,"e":560.42},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"notti","w":1,"b":"notti","s":560.42,"e":561.02},{"t":".","w":0,"b":"","s":0,"e":0},{"t":"I","w":1,"b":"i","s":561.44,"e":561.517},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"bambini","w":1,"b":"bambini","s":561.517,"e":562.057},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"però","w":1,"b":"però","s":562.057,"e":562.365},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"non","w":1,"b":"non","s":562.365,"e":562.596},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"raccontarono","w":1,"b":"raccontarono","s":562.596,"e":563.521},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"mai","w":1,"b":"mai","s":563.521,"e":563.753},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"dove","w":1,"b":"dove","s":563.753,"e":564.061},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"erano","w":1,"b":"erano","s":564.061,"e":564.446},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"stati","w":1,"b":"stati","s":564.446,"e":564.832},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"e","w":1,"b":"e","s":564.832,"e":564.909},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"che","w":1,"b":"che","s":564.909,"e":565.14},{"t":"cosa","w":1,"b":"cosa","s":565.14,"e":565.511},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"avevano","w":1,"b":"avevano","s":565.511,"e":566.161},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"fatto","w":1,"b":"fatto","s":566.161,"e":566.626},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"in","w":1,"b":"in","s":566.626,"e":566.811},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"montagna","w":1,"b":"montagna","s":566.811,"e":567.554},{"t":".","w":0,"b":"","s":0,"e":0},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"Il","w":1,"b":"il","s":567.647,"e":567.833},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"sindaco","w":1,"b":"sindaco","s":567.833,"e":568.483},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"invece","w":1,"b":"invece","s":568.483,"e":569.04},{"t":"imparò","w":1,"b":"imparò","s":569.04,"e":569.529},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"a","w":1,"b":"a","s":569.529,"e":569.61},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"mantenere","w":1,"b":"mantenere","s":569.61,"e":570.344},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"le","w":1,"b":"le","s":570.344,"e":570.507},{"t":" ","w":0,"b":"","s":0,"e":0},{"t":"promesse","w":1,"b":"promesse","s":570.507,"e":571.159},{"t":".","w":0,"b":"","s":0,"e":0}],"cloze":{"facile":[16,72,121,177,238,282,328,385,440,491,558,609,660,708,753,799,850,917,968,1029,1092,1149,1207,1270,1324,1387,1453,1507,1558,1607,1662,1709,1761,1810,1865,1915,1973,2027,2079,2126,2187,2250,2300,2354,2423],"medio":[16,46,81,109,141,168,200,238,265,287,312,342,376,408,440,466,498,542,573,603,631,660,689,715,742,770,794,818,850,881,925,953,987,1021,1049,1092,1129,1155,1187,1224,1263,1293,1324,1362,1394,1437,1472,1500,1532,1558,1589,1613,1639,1679,1703,1735,1761,1784,1815,1846,1883,1910,1941,1973,2004,2031,2064,2092,2118,2152,2187,2229,2254,2288,2312,2348,2384,2423,2462],"difficile":[16,30,46,62,81,97,109,121,141,155,168,187,200,216,238,253,265,276,287,303,312,328,342,358,376,390,408,419,440,452,466,483,498,523,542,558,573,589,603,617,631,647,660,677,689,704,715,727,742,753,770,779,794,804,818,834,850,864,881,908,925,942,953,968,987,1001,1021,1036,1049,1069,1092,1113,1129,1144,1155,1170,1187,1207,1224,1246,1263,1280,1293,1311,1324,1342,1362,1380,1394,1418,1437,1453,1472,1486,1500,1517,1532,1545,1558,1575,1589,1602,1613,1626,1639,1662,1679,1686,1703,1720,1735,1747,1761,1773,1784,1797,1815,1830,1846,1865,1883,1897,1910,1921,1941,1957,1973,1987,2004,2017,2031,2044,2064,2079,2092,2106,2118,2134,2152,2171,2187,2210,2229,2242,2254,2275,2288,2300,2312,2334,2348,2364,2384,2401,2423,2450,2462]}};
+const VERSION = "1.0.0";
+
+/* ═══════════════════════════════════════════════════════
+   STATO
+   ═══════════════════════════════════════════════════════ */
+const state = {
+  level: "medio",
+  nick: "",
+  okCount: 0,
+  shownCount: 0,
+  replayCount: 0,
+  cloze: {},          // {tokIdx: {attempts, status: 'pending'|'solved'|'shown'}}
+  audioReady: false,
+  audioTime: 0,
+  isPlaying: false,
+  pausedForCloze: false,
+  pendingClozeIdx: -1,
+  currentToken: -1
+};
+
+const REPLAY_PRE_SEC = 5;   // secondi indietro su replay
+const PAUSE_LEAD = 0.05;    // anticipo su parola cloze per pausa pulita
+const $ = (s, c) => (c||document).querySelector(s);
+const $$ = (s, c) => Array.from((c||document).querySelectorAll(s));
+
+/* ═══════════════════════════════════════════════════════
+   NORMALIZZAZIONE PAROLA (per match risposta)
+   ═══════════════════════════════════════════════════════ */
+function norm(s){
+  return (s||"").toString().toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g,"")  // togli accenti
+    .replace(/['']/g, "'")
+    .replace(/[^a-z']/g, "")
+    .trim();
+}
+
+/* ═══════════════════════════════════════════════════════
+   YOUTUBE IFRAME API
+   ═══════════════════════════════════════════════════════ */
+let YTP = null;
+let ytReadyResolve;
+const ytReadyP = new Promise(r => ytReadyResolve = r);
+
+window.onYouTubeIframeAPIReady = function(){
+  YTP = new YT.Player("yt-player", {
+    width: "1", height: "1",
+    videoId: STORY.videoId,
+    playerVars: { autoplay:0, controls:0, rel:0, playsinline:1, modestbranding:1, iv_load_policy:3, fs:0, disablekb:1 },
+    events: {
+      onReady: () => {
+        state.audioReady = true;
+        ytReadyResolve();
+      },
+      onStateChange: (e) => {
+        state.isPlaying = (e.data === YT.PlayerState.PLAYING);
+        updatePlayButton();
+        if(e.data === YT.PlayerState.ENDED){
+          handleEndOfStory();
+        }
+      }
+    }
+  });
+};
+
+(function loadYT(){
+  const tag = document.createElement("script");
+  tag.src = "https://www.youtube.com/iframe_api";
+  document.head.appendChild(tag);
+})();
+
+/* ═══════════════════════════════════════════════════════
+   COSTRUZIONE STORIA + CLOZE
+   ═══════════════════════════════════════════════════════ */
+function buildStory(){
+  const txt = $("#story-text");
+  txt.innerHTML = "";
+  const clozeIdx = new Set(STORY.cloze[state.level] || []);
+  state.cloze = {};
+
+  STORY.tokens.forEach((tok, i) => {
+    if(!tok.w){
+      // non-parola (punteggiatura/spazio): testuale
+      txt.append(document.createTextNode(tok.t));
+      return;
+    }
+    if(clozeIdx.has(i)){
+      // CLOZE: input + replay + hint
+      state.cloze[i] = { attempts: 0, status: 'pending' };
+      const wrap = document.createElement("span");
+      wrap.className = "cz";
+      wrap.dataset.i = i;
+
+      const input = document.createElement("input");
+      input.type = "text"; input.className = "cz-input";
+      input.placeholder = "______";
+      input.autocomplete = "off"; input.spellcheck = false;
+      input.dataset.i = i;
+      input.size = Math.max(4, tok.b.length);
+      input.style.width = (Math.max(5, tok.b.length + 2)) + "ch";
+
+      const btnReplay = document.createElement("button");
+      btnReplay.className = "cz-btn cz-replay";
+      btnReplay.title = "Riascolta gli ultimi 5 secondi";
+      btnReplay.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>';
+      btnReplay.addEventListener("click", (ev) => { ev.preventDefault(); replayWord(i); });
+
+      const btnHint = document.createElement("button");
+      btnHint.className = "cz-btn cz-hint";
+      btnHint.title = "Mostra la parola";
+      btnHint.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9 9a3 3 0 0 1 5.5 1.7c0 2-3 2.3-3 4.3"/><circle cx="12" cy="18" r=".6" fill="currentColor"/></svg>';
+      btnHint.addEventListener("click", (ev) => { ev.preventDefault(); revealWord(i); });
+
+      input.addEventListener("keydown", (ev) => {
+        if(ev.key === "Enter"){ ev.preventDefault(); validateCloze(i, input.value); }
+      });
+      input.addEventListener("blur", () => {
+        // se non vuoto, valida; se vuoto e siamo in pending, lascia
+        if(input.value.trim() && state.cloze[i].status === 'pending'){
+          validateCloze(i, input.value);
+        }
+      });
+      input.addEventListener("focus", () => {
+        // se c'è una pendingClozeIdx diversa, salta a questa
+        state.pendingClozeIdx = i;
+      });
+
+      wrap.appendChild(input);
+      wrap.appendChild(btnReplay);
+      wrap.appendChild(btnHint);
+      txt.appendChild(wrap);
+    } else {
+      // parola normale
+      const span = document.createElement("span");
+      span.className = "w";
+      span.dataset.i = i;
+      span.textContent = tok.t;
+      txt.appendChild(span);
+    }
+  });
+}
+
+/* ═══════════════════════════════════════════════════════
+   VALIDAZIONE CLOZE
+   ═══════════════════════════════════════════════════════ */
+function validateCloze(i, value){
+  const st = state.cloze[i];
+  if(!st || st.status !== 'pending') return;
+  const target = norm(STORY.tokens[i].b);
+  const guess  = norm(value);
+  if(!guess) return;
+
+  st.attempts = (st.attempts||0) + 1;
+  const wrap = $(`.cz[data-i="${i}"]`);
+  const input = wrap.querySelector(".cz-input");
+
+  if(guess === target){
+    st.status = 'solved';
+    state.okCount++;
+    input.value = STORY.tokens[i].t;
+    input.classList.remove("pending","wrong");
+    input.classList.add("solved");
+    input.disabled = true;
+    wrap.classList.add("solved");
+    flashFeedback(true, "Bravo!");
+    if(state.pendingClozeIdx === i) state.pendingClozeIdx = -1;
+    state.pausedForCloze = false;
+    if(YTP && state.audioReady) YTP.playVideo();
+    updateProgress();
+  } else {
+    input.classList.remove("pending");
+    input.classList.add("wrong");
+    flashFeedback(false, st.attempts >= 2 ? "Riprova ascoltando di nuovo!" : "Riprova!");
+    setTimeout(() => {
+      input.classList.remove("wrong");
+      input.classList.add("pending");
+      input.value = "";
+      // dopo 3 errori, mostra prima lettera come hint
+      if(st.attempts >= 3){
+        input.placeholder = STORY.tokens[i].b[0] + "…";
+      }
+      input.focus();
+    }, 700);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   REPLAY 5s INDIETRO
+   ═══════════════════════════════════════════════════════ */
+function replayWord(tokIdx){
+  if(!state.audioReady) return;
+  const tok = STORY.tokens[tokIdx];
+  const from = Math.max(STORY.audioStart, tok.s - REPLAY_PRE_SEC);
+  YTP.seekTo(from, true);
+  YTP.playVideo();
+  state.replayCount++;
+  state.pausedForCloze = false;
+  state.currentToken = -1;
+  state.pendingClozeIdx = tokIdx;
+  $$(".w.now").forEach(x => { x.classList.remove("now"); x.classList.add("read"); });
+  const btn = $(`.cz[data-i="${tokIdx}"] .cz-replay`);
+  if(btn){
+    btn.classList.add("playing");
+    setTimeout(() => btn.classList.remove("playing"), (REPLAY_PRE_SEC + 1) * 1000);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   SVELA PAROLA (escape hatch)
+   ═══════════════════════════════════════════════════════ */
+function revealWord(i){
+  const st = state.cloze[i];
+  if(!st || st.status !== 'pending') return;
+  st.status = 'shown';
+  state.shownCount++;
+  const wrap = $(`.cz[data-i="${i}"]`);
+  const input = wrap.querySelector(".cz-input");
+  input.value = STORY.tokens[i].t;
+  input.classList.remove("pending","wrong");
+  input.classList.add("shown");
+  input.disabled = true;
+  wrap.classList.add("shown");
+  flashFeedback(true, "Eccola!");
+  if(state.pendingClozeIdx === i) state.pendingClozeIdx = -1;
+  state.pausedForCloze = false;
+  if(YTP && state.audioReady) YTP.playVideo();
+  updateProgress();
+}
+
+/* ═══════════════════════════════════════════════════════
+   TICK: sync word-level + auto-pausa cloze
+   ═══════════════════════════════════════════════════════ */
+function startTickLoop(){
+  setInterval(tick, 80);
+}
+function tick(){
+  if(!state.audioReady || !YTP) return;
+  let t;
+  try { t = YTP.getCurrentTime(); } catch(e){ return; }
+  if(typeof t !== "number") return;
+  state.audioTime = t;
+
+  if(t > STORY.audioEnd - 0.2){ handleEndOfStory(); return; }
+
+  // trova token corrente
+  let cur = -1;
+  // ricerca lineare con cache: parto da currentToken se valida
+  const startI = (state.currentToken >= 0) ? state.currentToken : 0;
+  for(let i = startI; i < STORY.tokens.length; i++){
+    const tok = STORY.tokens[i];
+    if(!tok.w) continue;
+    if(t < tok.s - 0.001) break;
+    if(t >= tok.s && t <= tok.e + 0.05){ cur = i; break; }
+    if(t > tok.e + 0.05){ cur = i; }
+  }
+  if(cur === -1 && startI > 0){
+    // siamo tornati indietro
+    for(let i = 0; i < startI; i++){
+      const tok = STORY.tokens[i];
+      if(!tok.w) continue;
+      if(t >= tok.s && t <= tok.e + 0.05){ cur = i; break; }
+    }
+  }
+
+  if(cur !== state.currentToken){
+    // aggiorna evidenziazione
+    if(state.currentToken >= 0){
+      const prev = $(`.w[data-i="${state.currentToken}"]`);
+      if(prev){ prev.classList.remove("now"); prev.classList.add("read"); }
+    }
+    if(cur >= 0){
+      const el = $(`.w[data-i="${cur}"]`);
+      if(el){
+        el.classList.remove("read");
+        el.classList.add("now");
+        // marca tutte le parole prima come "read"
+        // (evito ciclo intero: solo se grosso salto)
+        if(Math.abs(cur - state.currentToken) > 5){
+          $$(".w").forEach(w => {
+            const wi = parseInt(w.dataset.i,10);
+            if(wi < cur) { w.classList.add("read"); w.classList.remove("now"); }
+            else if(wi > cur) { w.classList.remove("read","now"); }
+          });
+        }
+        // auto-scroll dolce
+        const rect = el.getBoundingClientRect();
+        if(rect.top < 100 || rect.bottom > window.innerHeight - 100){
+          el.scrollIntoView({behavior:"smooth", block:"center"});
+        }
+      }
+    }
+    state.currentToken = cur;
+  }
+
+  // gestione auto-pausa su cloze
+  if(!state.pausedForCloze){
+    // cerca prossima cloze pending vicina
+    for(let i = Math.max(0, state.currentToken - 1); i < STORY.tokens.length; i++){
+      const tok = STORY.tokens[i];
+      if(!tok.w) continue;
+      const cz = state.cloze[i];
+      if(!cz || cz.status !== 'pending') continue;
+      if(tok.s - PAUSE_LEAD <= t && t <= tok.e + 0.1){
+        // siamo arrivati alla cloze
+        YTP.pauseVideo();
+        state.pausedForCloze = true;
+        state.pendingClozeIdx = i;
+        const inp = $(`.cz[data-i="${i}"] .cz-input`);
+        if(inp){
+          inp.classList.add("pending");
+          setTimeout(() => inp.focus(), 80);
+        }
+        break;
+      }
+      if(tok.s > t + 2) break;  // non siamo abbastanza vicini
+    }
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   FEEDBACK BANNER
+   ═══════════════════════════════════════════════════════ */
+let fbT = null;
+function flashFeedback(ok, msg){
+  const fb = $("#feedback");
+  fb.className = ok ? "show ok" : "show ko";
+  $("#feedback-text").textContent = msg;
+  $("#feedback-icon").innerHTML = ok
+    ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>'
+    : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>';
+  clearTimeout(fbT);
+  fbT = setTimeout(() => fb.className = "", 1400);
+}
+
+/* ═══════════════════════════════════════════════════════
+   PROGRESSO
+   ═══════════════════════════════════════════════════════ */
+function updateProgress(){
+  const totalCloze = (STORY.cloze[state.level] || []).length;
+  const done = state.okCount + state.shownCount;
+  const pct = totalCloze > 0 ? Math.round((done / totalCloze) * 100) : 0;
+  $("#progress-fill").style.width = pct + "%";
+  $("#progress-text").textContent = pct + "%";
+  $("#stat-ok").textContent = state.okCount;
+  $("#stat-total").textContent = totalCloze;
+  const pill = $("#stats-pill");
+  if(state.okCount > 0) pill.classList.remove("empty");
+  else pill.classList.add("empty");
+}
+
+/* ═══════════════════════════════════════════════════════
+   PLAY BUTTON ICON
+   ═══════════════════════════════════════════════════════ */
+function updatePlayButton(){
+  const btn = $("#btn-play");
+  btn.innerHTML = state.isPlaying
+    ? '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>'
+    : '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
+}
+
+/* ═══════════════════════════════════════════════════════
+   FINE STORIA
+   ═══════════════════════════════════════════════════════ */
+let endHandled = false;
+function handleEndOfStory(){
+  if(endHandled) return;
+  endHandled = true;
+  if(YTP) YTP.pauseVideo();
+  $("#done-ok").textContent = state.okCount;
+  $("#done-replays").textContent = state.replayCount;
+  $("#done-shown").textContent = state.shownCount;
+  const total = (STORY.cloze[state.level] || []).length;
+  let msg = "Hai finito la fiaba del pifferaio magico.";
+  if(state.okCount === total) msg = "Hai indovinato TUTTE le parole. Sei un piccolo pifferaio campione!";
+  else if(state.okCount >= total*.7) msg = "Hai fatto davvero un bel lavoro!";
+  else if(state.okCount >= total*.4) msg = "Bravo! La prossima volta proverai un livello più difficile?";
+  $("#done-msg").textContent = msg;
+  $("#done-screen").classList.add("show");
+}
+
+/* ═══════════════════════════════════════════════════════
+   CONTROLLI
+   ═══════════════════════════════════════════════════════ */
+$("#btn-play").addEventListener("click", () => {
+  if(!state.audioReady) return;
+  if(state.isPlaying){ YTP.pauseVideo(); }
+  else {
+    if(state.audioTime < STORY.audioStart - 0.5) YTP.seekTo(STORY.audioStart, true);
+    YTP.playVideo();
+  }
+});
+
+$("#btn-restart").addEventListener("click", resetSession);
+
+function resetSession(){
+  if(YTP) YTP.pauseVideo();
+  if(YTP) YTP.seekTo(STORY.audioStart, true);
+  state.okCount = 0; state.shownCount = 0; state.replayCount = 0;
+  state.cloze = {};
+  state.currentToken = -1;
+  state.pausedForCloze = false;
+  state.pendingClozeIdx = -1;
+  endHandled = false;
+  $("#done-screen").classList.remove("show");
+  buildStory();
+  updateProgress();
+  window.scrollTo({top:0, behavior:"instant"});
+}
+
+$("#btn-menu").addEventListener("click", () => {
+  $("#menu-greeting").textContent = "Ciao " + state.nick + "!";
+  $$("#level-row .level-pill").forEach(p => p.classList.toggle("active", p.dataset.lv === state.level));
+  $("#menu-modal").classList.add("show");
+});
+$("#mi-close").addEventListener("click", () => $("#menu-modal").classList.remove("show"));
+$("#menu-modal").addEventListener("click", (e) => {
+  if(e.target.id === "menu-modal") $("#menu-modal").classList.remove("show");
+});
+
+$$("#level-row .level-pill").forEach(p => {
+  p.addEventListener("click", () => {
+    const lv = p.dataset.lv;
+    if(lv === state.level) return;
+    state.level = lv;
+    $$("#level-row .level-pill").forEach(x => x.classList.toggle("active", x === p));
+    resetSession();
+    $("#menu-modal").classList.remove("show");
+  });
+});
+
+$("#mi-restart").addEventListener("click", () => {
+  resetSession();
+  $("#menu-modal").classList.remove("show");
+});
+
+$("#done-back").addEventListener("click", () => {
+  $("#done-screen").classList.remove("show");
+  $("#btn-menu").click();
+});
+$("#done-restart").addEventListener("click", () => {
+  $("#done-screen").classList.remove("show");
+  resetSession();
+});
+
+/* ═══════════════════════════════════════════════════════
+   NICK & AVVIO
+   ═══════════════════════════════════════════════════════ */
+function startApp(){
+  $("#tb-name").textContent = state.nick;
+  $("#nick-modal").classList.add("hidden");
+  buildStory();
+  updateProgress();
+  startTickLoop();
+}
+
+$("#nick-go").addEventListener("click", () => {
+  const v = $("#nick-input").value.trim();
+  state.nick = v || "Amico";
+  startApp();
+});
+$("#nick-input").addEventListener("keydown", (ev) => {
+  if(ev.key === "Enter") $("#nick-go").click();
+});
+
+/* ═══════════════════════════════════════════════════════
+   BOOT: aspetta YT, poi togli loading
+   ═══════════════════════════════════════════════════════ */
+ytReadyP.then(() => {
+  $("#loading").classList.add("hidden");
+  setTimeout(() => $("#nick-input").focus(), 600);
+});
+// fallback: dopo 6s togli comunque il loading
+setTimeout(() => $("#loading").classList.add("hidden"), 6500);
+</script>
+
+</body>
+</html>
