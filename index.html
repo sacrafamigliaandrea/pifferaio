@@ -258,10 +258,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none}
   0%,100%{box-shadow:0 0 0 0 rgba(201,144,48,.5)}
   50%{box-shadow:0 0 0 6px rgba(201,144,48,0)}
 }
-.cz-btn.cz-hint{background:var(--gold-soft);color:var(--gold)}
-.cz-btn.cz-hint:hover{background:#EBD089}
 .cz.solved .cz-btn{display:none}
-.cz.shown .cz-btn{display:none}
 
 /* ════════════ YT HOST (nascosto) ════════════ */
 #yt-host{
@@ -570,8 +567,8 @@ button{font-family:inherit;cursor:pointer;border:none;background:none}
     <div class="done-msg" id="done-msg">Hai finito la fiaba del pifferaio magico.</div>
     <div class="done-stats">
       <div class="done-stat"><div class="done-stat-num" id="done-ok">0</div><div class="done-stat-lbl">indovinate</div></div>
+      <div class="done-stat"><div class="done-stat-num" id="done-firsttry">0</div><div class="done-stat-lbl">al primo colpo</div></div>
       <div class="done-stat"><div class="done-stat-num" id="done-replays">0</div><div class="done-stat-lbl">riascolti</div></div>
-      <div class="done-stat"><div class="done-stat-num" id="done-shown">0</div><div class="done-stat-lbl">aiuti</div></div>
     </div>
     <div class="done-actions">
       <button class="done-btn secondary" id="done-back">Cambia livello</button>
@@ -634,19 +631,16 @@ const state = {
   level: "medio",
   nick: "",
   okCount: 0,
-  shownCount: 0,
+  firstTryCount: 0,
   replayCount: 0,
-  cloze: {},          // {tokIdx: {attempts, status: 'pending'|'solved'|'shown'}}
+  cloze: {},          // {tokIdx: {attempts, status: 'pending'|'solved'}}
   audioReady: false,
   audioTime: 0,
   isPlaying: false,
-  pausedForCloze: false,
-  pendingClozeIdx: -1,
   currentToken: -1
 };
 
-const REPLAY_PRE_SEC = 5;   // secondi indietro su replay
-const PAUSE_LEAD = 0.05;    // anticipo su parola cloze per pausa pulita
+const REPLAY_PRE_SEC = 5;   // secondi indietro su replay (riascolto on-demand)
 const $ = (s, c) => (c||document).querySelector(s);
 const $$ = (s, c) => Array.from((c||document).querySelectorAll(s));
 
@@ -727,15 +721,9 @@ function buildStory(){
 
       const btnReplay = document.createElement("button");
       btnReplay.className = "cz-btn cz-replay";
-      btnReplay.title = "Riascolta gli ultimi 5 secondi";
+      btnReplay.title = "Riascolta la parola";
       btnReplay.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>';
       btnReplay.addEventListener("click", (ev) => { ev.preventDefault(); replayWord(i); });
-
-      const btnHint = document.createElement("button");
-      btnHint.className = "cz-btn cz-hint";
-      btnHint.title = "Mostra la parola";
-      btnHint.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9 9a3 3 0 0 1 5.5 1.7c0 2-3 2.3-3 4.3"/><circle cx="12" cy="18" r=".6" fill="currentColor"/></svg>';
-      btnHint.addEventListener("click", (ev) => { ev.preventDefault(); revealWord(i); });
 
       input.addEventListener("keydown", (ev) => {
         if(ev.key === "Enter"){ ev.preventDefault(); validateCloze(i, input.value); }
@@ -746,14 +734,9 @@ function buildStory(){
           validateCloze(i, input.value);
         }
       });
-      input.addEventListener("focus", () => {
-        // se c'è una pendingClozeIdx diversa, salta a questa
-        state.pendingClozeIdx = i;
-      });
 
       wrap.appendChild(input);
       wrap.appendChild(btnReplay);
-      wrap.appendChild(btnHint);
       txt.appendChild(wrap);
     } else {
       // parola normale
@@ -783,16 +766,16 @@ function validateCloze(i, value){
   if(guess === target){
     st.status = 'solved';
     state.okCount++;
+    if(st.attempts === 1) state.firstTryCount++;
     input.value = STORY.tokens[i].t;
     input.classList.remove("pending","wrong");
     input.classList.add("solved");
     input.disabled = true;
     wrap.classList.add("solved");
-    flashFeedback(true, "Bravo!");
-    if(state.pendingClozeIdx === i) state.pendingClozeIdx = -1;
-    state.pausedForCloze = false;
-    if(YTP && state.audioReady) YTP.playVideo();
+    flashFeedback(true, st.attempts === 1 ? "Bravo, al primo colpo!" : "Bravo!");
     updateProgress();
+    // sposta il focus sulla prossima cloze pending (utile su tastiera)
+    focusNextPending(i);
   } else {
     input.classList.remove("pending");
     input.classList.add("wrong");
@@ -801,12 +784,24 @@ function validateCloze(i, value){
       input.classList.remove("wrong");
       input.classList.add("pending");
       input.value = "";
-      // dopo 3 errori, mostra prima lettera come hint
-      if(st.attempts >= 3){
-        input.placeholder = STORY.tokens[i].b[0] + "…";
-      }
       input.focus();
     }, 700);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   FOCUS PROSSIMA CLOZE PENDING (per accessibilità tastiera)
+   ═══════════════════════════════════════════════════════ */
+function focusNextPending(fromIdx){
+  // trova la prossima cloze pending dopo fromIdx
+  for(const k of Object.keys(state.cloze)){
+    const idx = parseInt(k, 10);
+    if(idx <= fromIdx) continue;
+    if(state.cloze[idx].status === 'pending'){
+      const inp = $(`.cz[data-i="${idx}"] .cz-input`);
+      if(inp){ inp.focus(); }
+      return;
+    }
   }
 }
 
@@ -820,37 +815,14 @@ function replayWord(tokIdx){
   YTP.seekTo(from, true);
   YTP.playVideo();
   state.replayCount++;
-  state.pausedForCloze = false;
   state.currentToken = -1;
-  state.pendingClozeIdx = tokIdx;
+  // ripulisco evidenziazioni "now"
   $$(".w.now").forEach(x => { x.classList.remove("now"); x.classList.add("read"); });
   const btn = $(`.cz[data-i="${tokIdx}"] .cz-replay`);
   if(btn){
     btn.classList.add("playing");
     setTimeout(() => btn.classList.remove("playing"), (REPLAY_PRE_SEC + 1) * 1000);
   }
-}
-
-/* ═══════════════════════════════════════════════════════
-   SVELA PAROLA (escape hatch)
-   ═══════════════════════════════════════════════════════ */
-function revealWord(i){
-  const st = state.cloze[i];
-  if(!st || st.status !== 'pending') return;
-  st.status = 'shown';
-  state.shownCount++;
-  const wrap = $(`.cz[data-i="${i}"]`);
-  const input = wrap.querySelector(".cz-input");
-  input.value = STORY.tokens[i].t;
-  input.classList.remove("pending","wrong");
-  input.classList.add("shown");
-  input.disabled = true;
-  wrap.classList.add("shown");
-  flashFeedback(true, "Eccola!");
-  if(state.pendingClozeIdx === i) state.pendingClozeIdx = -1;
-  state.pausedForCloze = false;
-  if(YTP && state.audioReady) YTP.playVideo();
-  updateProgress();
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -918,27 +890,16 @@ function tick(){
     state.currentToken = cur;
   }
 
-  // gestione auto-pausa su cloze
-  if(!state.pausedForCloze){
-    // cerca prossima cloze pending vicina
-    for(let i = Math.max(0, state.currentToken - 1); i < STORY.tokens.length; i++){
-      const tok = STORY.tokens[i];
-      if(!tok.w) continue;
-      const cz = state.cloze[i];
-      if(!cz || cz.status !== 'pending') continue;
-      if(tok.s - PAUSE_LEAD <= t && t <= tok.e + 0.1){
-        // siamo arrivati alla cloze
-        YTP.pauseVideo();
-        state.pausedForCloze = true;
-        state.pendingClozeIdx = i;
-        const inp = $(`.cz[data-i="${i}"] .cz-input`);
-        if(inp){
-          inp.classList.add("pending");
-          setTimeout(() => inp.focus(), 80);
-        }
-        break;
+  // L'audio scorre INTERAMENTE: nessuna auto-pausa.
+  // Lo studente ascolta in continuo e compila le cloze in parallelo.
+  // Per le cloze non ancora risolte: marca come "now" anche l'input cloze quando il narratore la pronuncia.
+  if(state.currentToken >= 0){
+    const cz = state.cloze[state.currentToken];
+    if(cz && cz.status === 'pending'){
+      const inp = $(`.cz[data-i="${state.currentToken}"] .cz-input`);
+      if(inp && !inp.classList.contains("pending")){
+        inp.classList.add("pending");
       }
-      if(tok.s > t + 2) break;  // non siamo abbastanza vicini
     }
   }
 }
@@ -963,8 +924,7 @@ function flashFeedback(ok, msg){
    ═══════════════════════════════════════════════════════ */
 function updateProgress(){
   const totalCloze = (STORY.cloze[state.level] || []).length;
-  const done = state.okCount + state.shownCount;
-  const pct = totalCloze > 0 ? Math.round((done / totalCloze) * 100) : 0;
+  const pct = totalCloze > 0 ? Math.round((state.okCount / totalCloze) * 100) : 0;
   $("#progress-fill").style.width = pct + "%";
   $("#progress-text").textContent = pct + "%";
   $("#stat-ok").textContent = state.okCount;
@@ -994,10 +954,11 @@ function handleEndOfStory(){
   if(YTP) YTP.pauseVideo();
   $("#done-ok").textContent = state.okCount;
   $("#done-replays").textContent = state.replayCount;
-  $("#done-shown").textContent = state.shownCount;
+  $("#done-firsttry").textContent = state.firstTryCount;
   const total = (STORY.cloze[state.level] || []).length;
   let msg = "Hai finito la fiaba del pifferaio magico.";
-  if(state.okCount === total) msg = "Hai indovinato TUTTE le parole. Sei un piccolo pifferaio campione!";
+  if(state.okCount === total && state.firstTryCount === total) msg = "TUTTE giuste al primo colpo. Sei un piccolo pifferaio campione!";
+  else if(state.okCount === total) msg = "Hai indovinato tutte le parole. Bravissimo!";
   else if(state.okCount >= total*.7) msg = "Hai fatto davvero un bel lavoro!";
   else if(state.okCount >= total*.4) msg = "Bravo! La prossima volta proverai un livello più difficile?";
   $("#done-msg").textContent = msg;
@@ -1021,11 +982,9 @@ $("#btn-restart").addEventListener("click", resetSession);
 function resetSession(){
   if(YTP) YTP.pauseVideo();
   if(YTP) YTP.seekTo(STORY.audioStart, true);
-  state.okCount = 0; state.shownCount = 0; state.replayCount = 0;
+  state.okCount = 0; state.firstTryCount = 0; state.replayCount = 0;
   state.cloze = {};
   state.currentToken = -1;
-  state.pausedForCloze = false;
-  state.pendingClozeIdx = -1;
   endHandled = false;
   $("#done-screen").classList.remove("show");
   buildStory();
